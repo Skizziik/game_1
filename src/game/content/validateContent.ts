@@ -3,11 +3,17 @@ import {
   dialogueSchema,
   enemySchema,
   itemSchema,
+  perkSchema,
   questSchema,
+  recipeSchema,
+  regionSchema,
   type DialogueData,
   type EnemyData,
   type ItemData,
-  type QuestData
+  type PerkData,
+  type QuestData,
+  type RecipeData,
+  type RegionData
 } from './schemas';
 
 export interface ContentBundle {
@@ -15,6 +21,9 @@ export interface ContentBundle {
   enemies: unknown[];
   quests: unknown[];
   dialogues: unknown[];
+  perks: unknown[];
+  recipes: unknown[];
+  regions: unknown[];
 }
 
 export interface ContentValidationResult {
@@ -25,6 +34,9 @@ export interface ContentValidationResult {
     enemies: EnemyData[];
     quests: QuestData[];
     dialogues: DialogueData[];
+    perks: PerkData[];
+    recipes: RecipeData[];
+    regions: RegionData[];
   };
 }
 
@@ -35,8 +47,11 @@ export function validateContent(bundle: ContentBundle): ContentValidationResult 
   const enemyResult = parseCollection('enemies', bundle.enemies, enemySchema, errors);
   const questResult = parseCollection('quests', bundle.quests, questSchema, errors);
   const dialogueResult = parseCollection('dialogues', bundle.dialogues, dialogueSchema, errors);
+  const perkResult = parseCollection('perks', bundle.perks, perkSchema, errors);
+  const recipeResult = parseCollection('recipes', bundle.recipes, recipeSchema, errors);
+  const regionResult = parseCollection('regions', bundle.regions, regionSchema, errors);
 
-  if (!itemResult || !enemyResult || !questResult || !dialogueResult) {
+  if (!itemResult || !enemyResult || !questResult || !dialogueResult || !perkResult || !recipeResult || !regionResult) {
     return { ok: false, errors };
   }
 
@@ -45,6 +60,9 @@ export function validateContent(bundle: ContentBundle): ContentValidationResult 
   checkDuplicateIds(enemyResult.map((enemy) => enemy.id), 'enemies', errors);
   checkDuplicateIds(questResult.map((quest) => quest.id), 'quests', errors);
   checkDuplicateIds(dialogueResult.map((dialogue) => dialogue.conversationId), 'dialogues', errors);
+  checkDuplicateIds(perkResult.map((perk) => perk.id), 'perks', errors);
+  checkDuplicateIds(recipeResult.map((recipe) => recipe.id), 'recipes', errors);
+  checkDuplicateIds(regionResult.map((region) => region.id), 'regions', errors);
 
   for (const quest of questResult) {
     for (const rewardItem of quest.rewards.items) {
@@ -58,6 +76,12 @@ export function validateContent(bundle: ContentBundle): ContentValidationResult 
     validateDialogueGraph(conversation, errors);
 
     for (const node of conversation.nodes) {
+      for (const effect of node.effects) {
+        if (effect.type === 'addItem' && !itemIds.has(effect.itemId)) {
+          errors.push(`Dialogue ${conversation.conversationId}/${node.id} references unknown item ${effect.itemId}`);
+        }
+      }
+
       for (const choice of node.choices) {
         for (const effect of choice.effects) {
           if (effect.type === 'addItem' && !itemIds.has(effect.itemId)) {
@@ -70,6 +94,27 @@ export function validateContent(bundle: ContentBundle): ContentValidationResult 
     }
   }
 
+  for (const recipe of recipeResult) {
+    if (!itemIds.has(recipe.output.itemId)) {
+      errors.push(`Recipe ${recipe.id} output item does not exist: ${recipe.output.itemId}`);
+    }
+
+    for (const cost of recipe.cost) {
+      if (!itemIds.has(cost.itemId)) {
+        errors.push(`Recipe ${recipe.id} references unknown cost item ${cost.itemId}`);
+      }
+    }
+  }
+
+  const regionIds = new Set(regionResult.map((region) => region.id));
+  for (const region of regionResult) {
+    for (const neighbor of region.neighbors) {
+      if (!regionIds.has(neighbor)) {
+        errors.push(`Region ${region.id} references unknown neighbor ${neighbor}`);
+      }
+    }
+  }
+
   return {
     ok: errors.length === 0,
     errors,
@@ -77,7 +122,10 @@ export function validateContent(bundle: ContentBundle): ContentValidationResult 
       items: itemResult,
       enemies: enemyResult,
       quests: questResult,
-      dialogues: dialogueResult
+      dialogues: dialogueResult,
+      perks: perkResult,
+      recipes: recipeResult,
+      regions: regionResult
     }
   };
 }

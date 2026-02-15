@@ -1,38 +1,42 @@
-# GDD-Lite (Foundation)
+# GDD-Lite (Current Build)
 
 ## Vision
 
-- Genre: browser-based 2D top-down pixel RPG
-- Setting: post-fantasy world after techno-magical collapse
-- Core fantasy: Warden restoring or rewriting reality through Anchors
+- Browser-based 2D top-down pixel RPG
+- Post-fantasy ruins and techno-magical collapse
+- Player role: Warden navigating memory-loss threat (Silt)
 
-## MVP Scope (Implemented Foundation)
+## Core Loop (Implemented Foundation)
 
-- basic explorable map prototype
-- interaction points (cache/campfire)
-- movement, dodge, light/heavy action inputs
-- stamina-driven action costs
-- HUD with HP/Stamina/Cinders/event feed
-- data layer for items/enemies/quests/dialogues
-- save migration framework
-
-## Planned MVP Scope (Next)
-
-- hub + 2 regions + 1 dungeon
-- 20 quests, 30 items, 6 enemy archetypes, 1 boss
-- inventory and quest journal screens
-- real combat resolution and damage states
+1. Explore overworld sectors
+2. Fight enemy packs or avoid them
+3. Talk to faction NPCs
+4. Start and complete quest objectives
+5. Loot/craft resources and gain cinders
+6. Level up and invest perk points
+7. Unlock regions and repeat
 
 ## Narrative Pillars
 
-- Archivists: recovery of the old world
-- Pilgrims of Silt: acceptance of forgetting
-- Foundry Guild: practical rebuilding
+- Archivists: restore memory and structure
+- Pilgrims of Silt: accept forgetting and transformation
+- Foundry Guild: pragmatic rebuilding via craft and trade
 
-## Delivery Phases
+## Feature Status
 
-1. Preproduction
-2. Vertical Slice
-3. MVP
-4. Content Expansion
-5. Polish
+Implemented in current build:
+
+- movement/camera/collision
+- combat (light/heavy/bow) + stamina
+- enemy AI FSM and combat telegraphs
+- quest + dialogue progression
+- inventory/perks/quest/map UI screens
+- save slots + migration framework
+- data-driven content and validation pipeline
+
+Next expansion focus:
+
+- dungeon routing and boss scripting
+- richer economy and itemization depth
+- region-specific puzzle scripting
+- final act narrative branching and endings

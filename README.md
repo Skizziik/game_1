@@ -1,13 +1,40 @@
 # Ash & Aether
 
-Ash & Aether is a browser-first 2D top-down pixel RPG prototype built with TypeScript + Phaser 3.
+Ash & Aether is a browser-first 2D top-down pixel RPG (TypeScript + Phaser 3).
 
-This repository currently provides a **preproduction + vertical slice foundation**:
-- playable top-down scene with movement, collisions, interaction, camera look-ahead, light/heavy attacks, and dodge
-- data-driven gameplay modules (inventory, quest state machine, dialogue runtime, save migrations)
-- JSON schemas + validator for items, enemies, quests, and dialogues
-- automated tests for critical systems
-- CI pipeline for build, tests, and content validation
+Current state: **expanded vertical slice foundation** with integrated combat, enemy AI, quests, dialogue, UI screens, and save migrations.
+
+## Implemented Now
+
+- Main menu flow: `Continue / New Game / Settings / Credits`
+- Overworld prototype with:
+  - 8-direction movement, dodge, block
+  - weapon stances: sword / spear / bow
+  - light/heavy melee + ranged projectile combat
+  - stamina costs and regen
+- Enemy AI state machine:
+  - `Patrol -> Investigate -> Chase -> Attack (telegraph) -> Retreat`
+- Data-driven systems:
+  - inventory (6x8 + quickbar)
+  - quest state machine
+  - dialogue runtime (conditions/effects)
+  - perk tree (12 perks, 3 branches)
+  - crafting recipes
+- UI scenes:
+  - HUD
+  - Inventory
+  - Character + Perks
+  - Quest Journal
+  - World Map
+  - Dialogue panel
+- Save system:
+  - 3 save slots
+  - autosave + manual save
+  - migration path up to `saveVersion=3`
+- Content pipeline:
+  - JSON schemas + validator (items/enemies/quests/dialogues/perks/recipes/regions)
+- CI:
+  - content validation + tests + build
 
 ## Quick Start
 
@@ -16,37 +43,51 @@ npm install
 npm run dev
 ```
 
-Open the local Vite URL (typically `http://localhost:5173`).
+Open local Vite URL (usually `http://localhost:5173`).
 
 ## Scripts
 
 ```bash
-npm run dev              # start dev server
-npm run build            # type-check + production build
-npm run test:run         # run all tests once
-npm run validate:content # validate JSON content against schemas + graph checks
+npm run dev
+npm run validate:content
+npm run test:run
+npm run build
 ```
 
-## Controls (Prototype)
+## Controls
 
-- Move: `WASD` or arrow keys
+### Gameplay
+
+- Move: `WASD` or arrows
 - Interact: `E`
 - Dodge: `Space`
-- Light attack: `J` or left mouse click
-- Heavy attack: `K` or right mouse click
+- Block: `Shift`
+- Light attack: `J` or left mouse
+- Heavy attack: `K` or right mouse
+- Bow shot: `L` (requires bow stance)
+- Weapon stance: `1` sword, `2` spear, `3` bow
+- Save: `F5`
+
+### UI
+
+- Inventory: `I`
+- Character/Perks: `C`
+- Quest Journal: `Q`
+- Map: `M`
+- Settings: `Esc`
 
 ## Repository Layout
 
-- `src/game/scenes` - Phaser scenes (boot, overworld, HUD)
-- `src/game/systems` - gameplay/domain logic
-- `src/game/content` - JSON content + schemas + validator
-- `tests` - unit/data tests
-- `docs` - architecture and content authoring documentation
+- `src/game/scenes` - runtime and UI scenes
+- `src/game/systems` - gameplay/domain systems
+- `src/game/state` - session/state model
+- `src/game/content` - content JSON, schemas, validator
+- `tests` - automated tests
+- `docs` - architecture and authoring docs
 
-## Next Milestone Targets
+## Next Target
 
-- enemy AI (`Patrol -> Investigate -> Chase -> Attack -> Retreat`)
-- real combat hitboxes/damage windows
-- quest journal, inventory UI, map screen
-- Tiled map pipeline integration
-- boss encounter scripting and cutscene triggers
+- multi-region map content expansion with scripted dungeons and boss fights
+- richer loot/affix generation and shop rotation
+- deeper crafting/upgrades and perk unlock UX
+- polished pixel art asset pipeline and Tiled integration

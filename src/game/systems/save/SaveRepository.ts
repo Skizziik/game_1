@@ -1,5 +1,7 @@
 import { migrateSave } from './migrations';
-import type { SaveFile, SaveFileV2 } from './SaveTypes';
+import { CURRENT_SAVE_VERSION } from './SaveTypes';
+import type { SaveFile, SaveFileV3 } from './SaveTypes';
+import type { SessionSnapshot } from '../../state/types';
 
 const SLOT_COUNT = 3;
 const SLOT_PREFIX = 'ash-aether-save-slot';
@@ -9,7 +11,7 @@ export class SaveRepository {
     return SLOT_COUNT;
   }
 
-  public load(slot: number): SaveFileV2 | null {
+  public load(slot: number): SaveFileV3 | null {
     this.assertSlot(slot);
 
     const payload = localStorage.getItem(this.slotKey(slot));
@@ -21,12 +23,16 @@ export class SaveRepository {
     return migrateSave(parsed);
   }
 
-  public save(slot: number, data: SaveFile): void {
+  public save(slot: number, snapshot: SessionSnapshot): void {
     this.assertSlot(slot);
 
-    const payload: SaveFile = {
-      ...data,
-      timestamp: new Date().toISOString()
+    const payload: SaveFileV3 = {
+      saveVersion: CURRENT_SAVE_VERSION,
+      timestamp: new Date().toISOString(),
+      session: {
+        ...snapshot,
+        timestamp: new Date().toISOString()
+      }
     };
 
     localStorage.setItem(this.slotKey(slot), JSON.stringify(payload));
@@ -37,11 +43,20 @@ export class SaveRepository {
     localStorage.removeItem(this.slotKey(slot));
   }
 
-  public listSlots(): Array<{ slot: number; exists: boolean }> {
-    return Array.from({ length: SLOT_COUNT }, (_, i) => ({
-      slot: i,
-      exists: Boolean(localStorage.getItem(this.slotKey(i)))
-    }));
+  public listSlots(): Array<{ slot: number; exists: boolean; timestamp: string | null }> {
+    return Array.from({ length: SLOT_COUNT }, (_, i) => {
+      const payload = localStorage.getItem(this.slotKey(i));
+      if (!payload) {
+        return { slot: i, exists: false, timestamp: null };
+      }
+
+      try {
+        const parsed = migrateSave(JSON.parse(payload) as SaveFile);
+        return { slot: i, exists: true, timestamp: parsed.timestamp };
+      } catch {
+        return { slot: i, exists: true, timestamp: 'corrupted' };
+      }
+    });
   }
 
   private slotKey(slot: number): string {

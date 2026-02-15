@@ -1,7 +1,8 @@
 import type { SerializedInventory } from '../inventory/types';
 import type { SerializedQuestState } from '../quests/QuestStateMachine';
+import type { SessionSnapshot } from '../../state/types';
 
-export const CURRENT_SAVE_VERSION = 2;
+export const CURRENT_SAVE_VERSION = 3;
 
 export interface SavePlayerV1 {
   level: number;
@@ -33,4 +34,10 @@ export interface SaveFileV2 {
   worldFlags: Record<string, string | number | boolean>;
 }
 
-export type SaveFile = SaveFileV1 | SaveFileV2;
+export interface SaveFileV3 {
+  saveVersion: 3;
+  timestamp: string;
+  session: SessionSnapshot;
+}
+
+export type SaveFile = SaveFileV1 | SaveFileV2 | SaveFileV3;

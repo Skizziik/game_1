@@ -34,14 +34,39 @@ Fields:
 Fields:
 - `conversationId`
 - `nodes[]`
-- Node fields: `id`, `speakerId`, `portrait`, `text`, `tags`, `conditions`, `effects`, `choices[]`
-- Choice fields: `id`, `text`, `nextNodeId`, `conditions`, `effects`
+- node fields: `id`, `speakerId`, `portrait`, `text`, `tags`, `conditions`, `effects`, `choices[]`
+- choice fields: `id`, `text`, `nextNodeId`, `conditions`, `effects`
+
+## Perk
+
+Fields:
+- `id`, `branch`, `name`, `description`, `maxRank`
+- `effects` (`Record<string, number>`)
+
+## Recipe
+
+Fields:
+- `id`, `name`, `station`
+- `output` (`itemId`, `amount`, `maxStack`, `tags`)
+- `cost[]` (`itemId`, `amount`)
+- `cindersCost`
+
+## Region
+
+Fields:
+- `id`, `name`, `biome`, `recommendedLevel`
+- `neighbors[]`
+- `signaturePuzzle`
 
 ## Validation Rules
 
 - schema type/shape validation for every row
 - duplicate ID checks per collection
-- cross-reference checks (quest reward items, dialogue `addItem` effects)
+- cross-reference checks:
+  - quest reward items
+  - dialogue `addItem` effects
+  - recipe input/output item IDs
+  - region neighbor IDs
 - dialogue graph checks:
   - `nextNodeId` must exist
-  - cycles are flagged as validation errors
+  - cycles are validation errors

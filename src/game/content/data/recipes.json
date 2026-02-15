@@ -1,0 +1,49 @@
+[
+  {
+    "id": "craft_heal_small",
+    "name": "Cloudleaf Tincture",
+    "station": "foundry",
+    "output": {
+      "itemId": "consumable_heal_small",
+      "amount": 2,
+      "maxStack": 20,
+      "tags": ["consumable"]
+    },
+    "cost": [
+      { "itemId": "material_iron_ore", "amount": 2 },
+      { "itemId": "material_cloudleaf", "amount": 2 }
+    ],
+    "cindersCost": 12
+  },
+  {
+    "id": "craft_anchor_pack",
+    "name": "Anchor Dust Pack",
+    "station": "foundry",
+    "output": {
+      "itemId": "key_anchor_dust",
+      "amount": 1,
+      "maxStack": 50,
+      "tags": ["key", "material"]
+    },
+    "cost": [
+      { "itemId": "material_iron_ore", "amount": 6 }
+    ],
+    "cindersCost": 30
+  },
+  {
+    "id": "craft_stamina_vial",
+    "name": "Quicksilver Draught",
+    "station": "foundry",
+    "output": {
+      "itemId": "consumable_stamina_vial",
+      "amount": 1,
+      "maxStack": 20,
+      "tags": ["consumable"]
+    },
+    "cost": [
+      { "itemId": "material_iron_ore", "amount": 3 },
+      { "itemId": "material_cloudleaf", "amount": 3 }
+    ],
+    "cindersCost": 20
+  }
+]

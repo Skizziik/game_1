@@ -4,7 +4,7 @@
     "nodes": [
       {
         "id": "start",
-        "speakerId": "npc_archivist_lyra",
+        "speakerId": "Archivist Lyra",
         "portrait": "lyra",
         "text": "History doesn't disappear. It just hides. Help me pull it back.",
         "tags": ["quest"],
@@ -30,9 +30,9 @@
       },
       {
         "id": "request",
-        "speakerId": "npc_archivist_lyra",
+        "speakerId": "Archivist Lyra",
         "portrait": "lyra",
-        "text": "Find the cache by the broken wall. Bring back anything marked with Anchor sigils.",
+        "text": "Find the cache by the broken wall and bring the Anchor residue to Rook.",
         "tags": ["quest"],
         "choices": [
           {
@@ -43,6 +43,11 @@
               {
                 "type": "startQuest",
                 "questId": "main_find_anchordust"
+              },
+              {
+                "type": "addItem",
+                "itemId": "quest_archivist_seal",
+                "amount": 1
               }
             ]
           }
@@ -50,9 +55,199 @@
       },
       {
         "id": "end",
-        "speakerId": "npc_archivist_lyra",
+        "speakerId": "Archivist Lyra",
         "portrait": "lyra",
         "text": "Keep your mask sealed if the Silt rolls in.",
+        "tags": ["lore"],
+        "choices": []
+      }
+    ]
+  },
+  {
+    "conversationId": "rook_foundry",
+    "nodes": [
+      {
+        "id": "start",
+        "speakerId": "Master Rook",
+        "portrait": "rook",
+        "text": "You brought dust? Good. We can still temper steel in this dead age.",
+        "tags": ["quest", "trade"],
+        "choices": [
+          {
+            "id": "turn_in",
+            "text": "The cache is cleared. Here's the residue.",
+            "nextNodeId": "turn_in_done",
+            "conditions": [
+              {
+                "type": "questStatus",
+                "questId": "main_find_anchordust",
+                "status": "active"
+              },
+              {
+                "type": "itemCountAtLeast",
+                "itemId": "key_anchor_dust",
+                "value": 1
+              }
+            ],
+            "effects": [
+              {
+                "type": "completeQuest",
+                "questId": "main_find_anchordust"
+              },
+              {
+                "type": "setFlag",
+                "flagId": "talked_to_rook",
+                "value": true
+              },
+              {
+                "type": "addReputation",
+                "factionId": "foundry",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "id": "ask_trade",
+            "text": "Can the Foundry make field supplies?",
+            "nextNodeId": "trade_info"
+          },
+          {
+            "id": "leave",
+            "text": "Later.",
+            "nextNodeId": "end"
+          }
+        ]
+      },
+      {
+        "id": "turn_in_done",
+        "speakerId": "Master Rook",
+        "portrait": "rook",
+        "text": "Good work. Gate to Gloamwood is yours. Bring ore next, and I'll string you a proper bow.",
+        "tags": ["quest"],
+        "choices": [
+          {
+            "id": "accept_foundry_trial",
+            "text": "I'll bring the ore.",
+            "nextNodeId": "end",
+            "effects": [
+              {
+                "type": "startQuest",
+                "questId": "faction_foundry_trial"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trade_info",
+        "speakerId": "Master Rook",
+        "portrait": "rook",
+        "text": "Use my bench. If you have ore and coin, you'll leave with medicine.",
+        "tags": ["trade"],
+        "choices": [
+          {
+            "id": "back",
+            "text": "Understood.",
+            "nextNodeId": "end"
+          }
+        ]
+      },
+      {
+        "id": "end",
+        "speakerId": "Master Rook",
+        "portrait": "rook",
+        "text": "Keep your blade dry, Warden.",
+        "tags": ["lore"],
+        "choices": []
+      }
+    ]
+  },
+  {
+    "conversationId": "pilgrim_warning",
+    "nodes": [
+      {
+        "id": "start",
+        "speakerId": "Pilgrim Neris",
+        "portrait": "neris",
+        "text": "You cling to names. Names are chains. Let the Silt take them.",
+        "tags": ["lore"],
+        "choices": [
+          {
+            "id": "argue",
+            "text": "Forgetting isn't cleansing.",
+            "nextNodeId": "challenge",
+            "effects": [
+              {
+                "type": "addReputation",
+                "factionId": "pilgrims",
+                "value": -1
+              }
+            ]
+          },
+          {
+            "id": "ask_task",
+            "text": "Give me something useful then.",
+            "nextNodeId": "bounty",
+            "effects": [
+              {
+                "type": "setFlag",
+                "flagId": "pilgrim_bounty_open",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "challenge",
+        "speakerId": "Pilgrim Neris",
+        "portrait": "neris",
+        "text": "Then cut down the Siltlings by the quarry and prove memory has teeth.",
+        "tags": ["quest"],
+        "choices": [
+          {
+            "id": "accept",
+            "text": "I'll clear them.",
+            "nextNodeId": "end",
+            "effects": [
+              {
+                "type": "setFlag",
+                "flagId": "pilgrim_bounty_open",
+                "value": true
+              },
+              {
+                "type": "startQuest",
+                "questId": "bounty_clear_siltlings"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bounty",
+        "speakerId": "Pilgrim Neris",
+        "portrait": "neris",
+        "text": "Very well. Four Siltlings. Bring silence back to that road.",
+        "tags": ["quest"],
+        "choices": [
+          {
+            "id": "accept_bounty",
+            "text": "Done.",
+            "nextNodeId": "end",
+            "effects": [
+              {
+                "type": "startQuest",
+                "questId": "bounty_clear_siltlings"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "end",
+        "speakerId": "Pilgrim Neris",
+        "portrait": "neris",
+        "text": "When dust speaks, listen.",
         "tags": ["lore"],
         "choices": []
       }

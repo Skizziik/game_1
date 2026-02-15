@@ -1,0 +1,98 @@
+[
+  {
+    "id": "warden_guarded_step",
+    "branch": "Warden",
+    "name": "Guarded Step",
+    "description": "Increases max stamina.",
+    "maxRank": 3,
+    "effects": { "maxStamina": 6 }
+  },
+  {
+    "id": "warden_iron_breath",
+    "branch": "Warden",
+    "name": "Iron Breath",
+    "description": "Boosts stamina regeneration.",
+    "maxRank": 3,
+    "effects": { "staminaRegen": 0.08 }
+  },
+  {
+    "id": "warden_last_bastion",
+    "branch": "Warden",
+    "name": "Last Bastion",
+    "description": "Raises base defense.",
+    "maxRank": 3,
+    "effects": { "defense": 1 }
+  },
+  {
+    "id": "warden_shield_memory",
+    "branch": "Warden",
+    "name": "Shield Memory",
+    "description": "Improves block mitigation.",
+    "maxRank": 2,
+    "effects": { "blockMitigation": 0.04 }
+  },
+  {
+    "id": "echo_silt_sense",
+    "branch": "Echo",
+    "name": "Silt Sense",
+    "description": "Improves loot chance.",
+    "maxRank": 2,
+    "effects": { "lootChance": 0.1 }
+  },
+  {
+    "id": "echo_long_recall",
+    "branch": "Echo",
+    "name": "Long Recall",
+    "description": "Raises critical chance.",
+    "maxRank": 2,
+    "effects": { "crit": 0.03 }
+  },
+  {
+    "id": "echo_ruin_reader",
+    "branch": "Echo",
+    "name": "Ruin Reader",
+    "description": "Grants exploration XP bonus.",
+    "maxRank": 2,
+    "effects": { "explorationXp": 15 }
+  },
+  {
+    "id": "echo_anchor_glint",
+    "branch": "Echo",
+    "name": "Anchor Glint",
+    "description": "Caches yield bonus cinders.",
+    "maxRank": 3,
+    "effects": { "cacheCinders": 2 }
+  },
+  {
+    "id": "foundry_clean_cut",
+    "branch": "Foundry",
+    "name": "Clean Cut",
+    "description": "Raises attack power.",
+    "maxRank": 3,
+    "effects": { "attack": 2 }
+  },
+  {
+    "id": "foundry_temper",
+    "branch": "Foundry",
+    "name": "Temper",
+    "description": "Heavy strikes deal more damage.",
+    "maxRank": 3,
+    "effects": { "heavyDamageMul": 0.03 }
+  },
+  {
+    "id": "foundry_light_hands",
+    "branch": "Foundry",
+    "name": "Light Hands",
+    "description": "Reduces heavy stamina cost.",
+    "maxRank": 2,
+    "effects": { "heavyStaminaDiscount": 0.06 }
+  },
+  {
+    "id": "foundry_sharp_fletch",
+    "branch": "Foundry",
+    "name": "Sharp Fletch",
+    "description": "Bow shots gain flat damage.",
+    "maxRank": 2,
+    "effects": { "bowDamage": 5 }
+  }
+]

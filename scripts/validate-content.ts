@@ -12,5 +12,5 @@ if (!result.ok) {
 }
 
 console.log(
-  `Content validation passed: ${result.parsed?.items.length ?? 0} items, ${result.parsed?.enemies.length ?? 0} enemies, ${result.parsed?.quests.length ?? 0} quests, ${result.parsed?.dialogues.length ?? 0} dialogues.`
+  `Content validation passed: ${result.parsed?.items.length ?? 0} items, ${result.parsed?.enemies.length ?? 0} enemies, ${result.parsed?.quests.length ?? 0} quests, ${result.parsed?.dialogues.length ?? 0} dialogues, ${result.parsed?.perks.length ?? 0} perks, ${result.parsed?.recipes.length ?? 0} recipes, ${result.parsed?.regions.length ?? 0} regions.`
 );

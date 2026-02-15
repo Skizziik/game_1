@@ -14,6 +14,20 @@
     }
   },
   {
+    "id": "consumable_stamina_vial",
+    "name": "Quicksilver Draught",
+    "description": "Distilled tonic that restores stamina quickly.",
+    "icon": "consumable/stamina_vial",
+    "type": "consumable",
+    "rarity": "Uncommon",
+    "stackSize": 20,
+    "value": 22,
+    "tags": ["consumable"],
+    "useEffect": {
+      "stamina": 40
+    }
+  },
+  {
     "id": "material_iron_ore",
     "name": "Iron Ore",
     "description": "Raw quarry ore used by the Foundry Guild.",
@@ -22,6 +36,17 @@
     "rarity": "Common",
     "stackSize": 99,
     "value": 6,
+    "tags": ["material"]
+  },
+  {
+    "id": "material_cloudleaf",
+    "name": "Cloudleaf",
+    "description": "Silvery herb harvested from damp ruins.",
+    "icon": "material/cloudleaf",
+    "type": "material",
+    "rarity": "Common",
+    "stackSize": 99,
+    "value": 5,
     "tags": ["material"]
   },
   {
@@ -40,6 +65,50 @@
     "tags": ["gear"]
   },
   {
+    "id": "weapon_silt_spear",
+    "name": "Siltbreak Spear",
+    "description": "Long reach weapon adapted for marsh skirmishes.",
+    "icon": "weapon/silt_spear",
+    "type": "weapon",
+    "rarity": "Rare",
+    "stackSize": 1,
+    "value": 260,
+    "statsModifiers": {
+      "attack": 10,
+      "crit": 0.02
+    },
+    "tags": ["gear"]
+  },
+  {
+    "id": "weapon_echo_bow",
+    "name": "Echo Bow",
+    "description": "A recurve bow with a memory-thread string.",
+    "icon": "weapon/echo_bow",
+    "type": "weapon",
+    "rarity": "Rare",
+    "stackSize": 1,
+    "value": 270,
+    "statsModifiers": {
+      "attack": 8,
+      "crit": 0.04
+    },
+    "tags": ["gear"]
+  },
+  {
+    "id": "armor_warden_coat",
+    "name": "Warden Coat",
+    "description": "Layered cloth and plates against grit and shrapnel.",
+    "icon": "armor/warden_coat",
+    "type": "armor",
+    "rarity": "Uncommon",
+    "stackSize": 1,
+    "value": 190,
+    "statsModifiers": {
+      "defense": 6
+    },
+    "tags": ["gear"]
+  },
+  {
     "id": "key_anchor_dust",
     "name": "Anchor Dust",
     "description": "Reactive residue needed for +1 upgrades.",
@@ -49,5 +118,16 @@
     "stackSize": 50,
     "value": 0,
     "tags": ["key", "material"]
+  },
+  {
+    "id": "quest_archivist_seal",
+    "name": "Archivist Seal",
+    "description": "Proof that Lyra sent you into the ruins.",
+    "icon": "quest/archivist_seal",
+    "type": "quest",
+    "rarity": "Uncommon",
+    "stackSize": 1,
+    "value": 0,
+    "tags": ["quest"]
   }
 ]

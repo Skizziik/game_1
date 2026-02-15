@@ -6,41 +6,58 @@
 - Language: TypeScript
 - Tooling: Vite, Vitest, Zod
 
-## High-Level Layers
+## Runtime Scenes
 
-1. Core Runtime
-- Game bootstrap and scene orchestration (`BootScene`, `OverworldScene`, `HudScene`)
-- Input loop, physics, camera follow/look-ahead
+- `BootScene` - runtime bootstrap + generated placeholder textures
+- `MainMenuScene` - continue/new/settings/credits flow
+- `OverworldScene` - exploration, combat, interactions, quest progression
+- `HudScene` - combat/resources/quickbar/event feed
+- `InventoryScene` - inventory tabs and equipment display
+- `CharacterScene` - stats/perks/reputation view
+- `QuestJournalScene` - quest tracking panel
+- `WorldMapScene` - region discovery/unlock visualization
+- `DialogueScene` - conversation choices + keyboard/mouse selection
+- `SettingsMenuScene` / `CreditsScene` - utility screens
 
-2. Gameplay Systems
-- `Inventory` (grid + quickbar model)
-- `QuestStateMachine` (availability, objective progression, status transitions)
-- `DialogueRuntime` (conditions/effects with game-state adapters)
-- Save layer (`SaveRepository` + version migrations)
+## Gameplay Systems
 
-3. Content
-- JSON content bundles (`items`, `enemies`, `quests`, `dialogues`)
-- Zod schemas + integrity validation (IDs, references, dialogue graph constraints)
+- `GameSession` (single source of truth)
+  - player stats and progression
+  - cinders, flags, reputations, region discovery
+  - inventory + quests + perks integration
+  - quest rewards and content indexing
+- `Inventory` - stackable item model with quickbar assignment
+- `QuestStateMachine` - lock/available/active/completed/failed lifecycle
+- `DialogueRuntime` - conditional choices and stateful effects
+- `EnemyController` - finite-state AI with telegraphed attacks
+- `CraftingSystem` - station recipes with material/currency checks
+- Save layer (`SaveRepository` + migrations)
 
-4. UI
-- In-canvas HUD scene for combat/resources/event feed
-- Registry-based data snapshots from gameplay scene to HUD
+## Data-Driven Content
 
-## Data-Driven Design
+Content lives under `src/game/content/data`:
 
-Gameplay systems do not hardcode content IDs except in the temporary prototype scene. The production direction is:
-- authored content in JSON
-- strict schema validation in CI
-- runtime loading and dispatch into systems
+- `items.json`
+- `enemies.json`
+- `quests.json`
+- `dialogues.json`
+- `perks.json`
+- `recipes.json`
+- `regions.json`
 
-## Save Versioning Strategy
+Validation (`validateContent`) enforces:
 
-- Save files include `saveVersion`
-- Migrations are incremental (`v1 -> v2 -> ... -> current`)
-- Runtime always normalizes to current schema before usage
+- schema integrity for each dataset
+- duplicate ID checks
+- cross-reference checks (quest rewards, recipe inputs/outputs, dialogue item effects)
+- dialogue graph correctness (missing nodes + cycle detection)
+- region neighbor integrity
 
-## Current Boundaries
+## Save Versioning
 
-- Enemy AI and full combat resolution are placeholders
-- Prototype map is generated in-scene from simple tile logic
-- UI is HUD-only (menu, inventory, map, dialogue screens pending)
+Current version: `3`
+
+- `v1 -> v2`: add stamina fields
+- `v2 -> v3`: migrate to session snapshot model
+
+Runtime always normalizes saves via `migrateSave` before use.

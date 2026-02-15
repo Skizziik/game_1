@@ -21,16 +21,16 @@
     "rewards": {
       "items": [
         {
-          "itemId": "weapon_warden_blade",
+          "itemId": "weapon_silt_spear",
           "amount": 1
         }
       ],
-      "cinders": 50,
-      "xp": 120,
+      "cinders": 80,
+      "xp": 220,
       "reputation": [
         {
           "factionId": "foundry",
-          "amount": 8
+          "amount": 10
         }
       ]
     },
@@ -62,7 +62,7 @@
       {
         "id": "collect_cloudleaf",
         "type": "collect",
-        "targetId": "herb_cloudleaf",
+        "targetId": "material_cloudleaf",
         "required": 5
       }
     ],
@@ -70,15 +70,99 @@
       "items": [
         {
           "itemId": "consumable_heal_small",
-          "amount": 3
+          "amount": 4
         }
       ],
-      "cinders": 24,
-      "xp": 60,
+      "cinders": 40,
+      "xp": 90,
       "reputation": [
         {
           "factionId": "archivists",
-          "amount": 5
+          "amount": 6
+        }
+      ]
+    }
+  },
+  {
+    "id": "bounty_clear_siltlings",
+    "title": "Silt Extermination",
+    "description": "Cull roaming Siltlings near the quarry path.",
+    "category": "bounty",
+    "prerequisites": {
+      "flags": [
+        {
+          "id": "pilgrim_bounty_open",
+          "equals": true
+        }
+      ],
+      "quests": []
+    },
+    "objectives": [
+      {
+        "id": "kill_siltlings",
+        "type": "kill",
+        "targetId": "siltling",
+        "required": 4
+      }
+    ],
+    "rewards": {
+      "items": [
+        {
+          "itemId": "consumable_stamina_vial",
+          "amount": 2
+        }
+      ],
+      "cinders": 75,
+      "xp": 150,
+      "reputation": [
+        {
+          "factionId": "pilgrims",
+          "amount": 4
+        }
+      ]
+    }
+  },
+  {
+    "id": "faction_foundry_trial",
+    "title": "Sparkproof Alloy",
+    "description": "Deliver ore samples to the Foundry bench.",
+    "category": "faction",
+    "prerequisites": {
+      "flags": [
+        {
+          "id": "talked_to_rook",
+          "equals": true
+        }
+      ],
+      "quests": ["main_find_anchordust"]
+    },
+    "objectives": [
+      {
+        "id": "collect_ore",
+        "type": "collect",
+        "targetId": "material_iron_ore",
+        "required": 8
+      },
+      {
+        "id": "visit_foundry",
+        "type": "talk",
+        "targetId": "foundry_station",
+        "required": 1
+      }
+    ],
+    "rewards": {
+      "items": [
+        {
+          "itemId": "weapon_echo_bow",
+          "amount": 1
+        }
+      ],
+      "cinders": 120,
+      "xp": 180,
+      "reputation": [
+        {
+          "factionId": "foundry",
+          "amount": 12
         }
       ]
     }

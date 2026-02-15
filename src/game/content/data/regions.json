@@ -1,0 +1,42 @@
+[
+  {
+    "id": "cinderhaven",
+    "name": "Cinderhaven",
+    "biome": "hub",
+    "recommendedLevel": 1,
+    "neighbors": ["gloamwood", "salt_quarry"],
+    "signaturePuzzle": "Foundry gate pressure sequence"
+  },
+  {
+    "id": "gloamwood",
+    "name": "Gloamwood",
+    "biome": "forest",
+    "recommendedLevel": 2,
+    "neighbors": ["cinderhaven", "mirror_marsh"],
+    "signaturePuzzle": "Echo root mirror lock"
+  },
+  {
+    "id": "salt_quarry",
+    "name": "Salt Quarry",
+    "biome": "quarry",
+    "recommendedLevel": 3,
+    "neighbors": ["cinderhaven"],
+    "signaturePuzzle": "Counterweight lift control"
+  },
+  {
+    "id": "mirror_marsh",
+    "name": "Mirror Marsh",
+    "biome": "marsh",
+    "recommendedLevel": 4,
+    "neighbors": ["gloamwood", "sunken_spire"],
+    "signaturePuzzle": "Light reflection lattice"
+  },
+  {
+    "id": "sunken_spire",
+    "name": "The Sunken Spire",
+    "biome": "dungeon",
+    "recommendedLevel": 6,
+    "neighbors": ["mirror_marsh"],
+    "signaturePuzzle": "Anchor triad lock"
+  }
+]

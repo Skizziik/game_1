@@ -2,10 +2,16 @@ import items from './data/items.json';
 import enemies from './data/enemies.json';
 import quests from './data/quests.json';
 import dialogues from './data/dialogues.json';
+import perks from './data/perks.json';
+import recipes from './data/recipes.json';
+import regions from './data/regions.json';
 
 export const defaultContent = {
   items,
   enemies,
   quests,
-  dialogues
+  dialogues,
+  perks,
+  recipes,
+  regions
 };
