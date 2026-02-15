@@ -1,0 +1,53 @@
+[
+  {
+    "id": "consumable_heal_small",
+    "name": "Cloudleaf Tincture",
+    "description": "A bitter tonic that steadies the pulse.",
+    "icon": "consumable/heal_small",
+    "type": "consumable",
+    "rarity": "Common",
+    "stackSize": 20,
+    "value": 18,
+    "tags": ["consumable"],
+    "useEffect": {
+      "heal": 30
+    }
+  },
+  {
+    "id": "material_iron_ore",
+    "name": "Iron Ore",
+    "description": "Raw quarry ore used by the Foundry Guild.",
+    "icon": "material/iron_ore",
+    "type": "material",
+    "rarity": "Common",
+    "stackSize": 99,
+    "value": 6,
+    "tags": ["material"]
+  },
+  {
+    "id": "weapon_warden_blade",
+    "name": "Warden Blade",
+    "description": "Standard issue ruins-forged longsword.",
+    "icon": "weapon/warden_blade",
+    "type": "weapon",
+    "rarity": "Uncommon",
+    "stackSize": 1,
+    "value": 180,
+    "statsModifiers": {
+      "attack": 7,
+      "crit": 0.03
+    },
+    "tags": ["gear"]
+  },
+  {
+    "id": "key_anchor_dust",
+    "name": "Anchor Dust",
+    "description": "Reactive residue needed for +1 upgrades.",
+    "icon": "key/anchor_dust",
+    "type": "key",
+    "rarity": "Rare",
+    "stackSize": 50,
+    "value": 0,
+    "tags": ["key", "material"]
+  }
+]

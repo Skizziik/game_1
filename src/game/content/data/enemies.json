@@ -1,0 +1,71 @@
+[
+  {
+    "id": "siltling",
+    "name": "Siltling",
+    "hp": 40,
+    "attack": 8,
+    "defense": 2,
+    "speed": 90,
+    "lootTableId": "loot_siltling",
+    "aiProfileId": "ai_melee_basic",
+    "animations": {
+      "idle": "siltling_idle",
+      "walk": "siltling_walk",
+      "attack": "siltling_attack",
+      "hurt": "siltling_hurt",
+      "death": "siltling_death"
+    },
+    "hitbox": {
+      "width": 20,
+      "height": 20,
+      "offsetX": 6,
+      "offsetY": 9
+    }
+  },
+  {
+    "id": "grove_stalker",
+    "name": "Grove Stalker",
+    "hp": 55,
+    "attack": 12,
+    "defense": 3,
+    "speed": 120,
+    "lootTableId": "loot_grove_stalker",
+    "aiProfileId": "ai_skirmisher",
+    "animations": {
+      "idle": "stalker_idle",
+      "walk": "stalker_walk",
+      "attack": "stalker_attack",
+      "hurt": "stalker_hurt",
+      "death": "stalker_death"
+    },
+    "hitbox": {
+      "width": 22,
+      "height": 20,
+      "offsetX": 5,
+      "offsetY": 8
+    }
+  },
+  {
+    "id": "quarry_brute",
+    "name": "Quarry Brute",
+    "hp": 120,
+    "attack": 20,
+    "defense": 9,
+    "speed": 60,
+    "lootTableId": "loot_quarry_brute",
+    "aiProfileId": "ai_tank",
+    "animations": {
+      "idle": "brute_idle",
+      "walk": "brute_walk",
+      "attack": "brute_attack",
+      "hurt": "brute_hurt",
+      "death": "brute_death"
+    },
+    "hitbox": {
+      "width": 28,
+      "height": 26,
+      "offsetX": 3,
+      "offsetY": 6
+    }
+  }
+]

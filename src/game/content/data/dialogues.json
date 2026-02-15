@@ -1,0 +1,61 @@
+[
+  {
+    "conversationId": "archivist_intro",
+    "nodes": [
+      {
+        "id": "start",
+        "speakerId": "npc_archivist_lyra",
+        "portrait": "lyra",
+        "text": "History doesn't disappear. It just hides. Help me pull it back.",
+        "tags": ["quest"],
+        "choices": [
+          {
+            "id": "ask_help",
+            "text": "What do you need from me?",
+            "nextNodeId": "request",
+            "effects": [
+              {
+                "type": "setFlag",
+                "flagId": "talked_to_archivist",
+                "value": true
+              }
+            ]
+          },
+          {
+            "id": "leave",
+            "text": "Not now.",
+            "nextNodeId": "end"
+          }
+        ]
+      },
+      {
+        "id": "request",
+        "speakerId": "npc_archivist_lyra",
+        "portrait": "lyra",
+        "text": "Find the cache by the broken wall. Bring back anything marked with Anchor sigils.",
+        "tags": ["quest"],
+        "choices": [
+          {
+            "id": "accept",
+            "text": "I'll bring it back.",
+            "nextNodeId": "end",
+            "effects": [
+              {
+                "type": "startQuest",
+                "questId": "main_find_anchordust"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "end",
+        "speakerId": "npc_archivist_lyra",
+        "portrait": "lyra",
+        "text": "Keep your mask sealed if the Silt rolls in.",
+        "tags": ["lore"],
+        "choices": []
+      }
+    ]
+  }
+]

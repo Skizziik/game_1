@@ -1,0 +1,86 @@
+[
+  {
+    "id": "main_find_anchordust",
+    "title": "Dust for the Forge",
+    "description": "Bring Anchor Dust to Foundry master Rook in Cinderhaven.",
+    "category": "main",
+    "objectives": [
+      {
+        "id": "loot_cache",
+        "type": "collect",
+        "targetId": "key_anchor_dust",
+        "required": 1
+      },
+      {
+        "id": "talk_rook",
+        "type": "talk",
+        "targetId": "npc_rook",
+        "required": 1
+      }
+    ],
+    "rewards": {
+      "items": [
+        {
+          "itemId": "weapon_warden_blade",
+          "amount": 1
+        }
+      ],
+      "cinders": 50,
+      "xp": 120,
+      "reputation": [
+        {
+          "factionId": "foundry",
+          "amount": 8
+        }
+      ]
+    },
+    "onComplete": {
+      "setFlags": [
+        {
+          "id": "gate_gloamwood_unlocked",
+          "value": true
+        }
+      ],
+      "unlockRegions": ["gloamwood"]
+    }
+  },
+  {
+    "id": "side_herbal_supplies",
+    "title": "Green in the Ash",
+    "description": "Collect cloudleaf for the Archivists' infirmary.",
+    "category": "side",
+    "prerequisites": {
+      "flags": [
+        {
+          "id": "talked_to_archivist",
+          "equals": true
+        }
+      ],
+      "quests": []
+    },
+    "objectives": [
+      {
+        "id": "collect_cloudleaf",
+        "type": "collect",
+        "targetId": "herb_cloudleaf",
+        "required": 5
+      }
+    ],
+    "rewards": {
+      "items": [
+        {
+          "itemId": "consumable_heal_small",
+          "amount": 3
+        }
+      ],
+      "cinders": 24,
+      "xp": 60,
+      "reputation": [
+        {
+          "factionId": "archivists",
+          "amount": 5
+        }
+      ]
+    }
+  }
+]
