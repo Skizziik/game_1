@@ -11,6 +11,8 @@ import { CharacterScene } from '../scenes/CharacterScene';
 import { QuestJournalScene } from '../scenes/QuestJournalScene';
 import { WorldMapScene } from '../scenes/WorldMapScene';
 import { DialogueScene } from '../scenes/DialogueScene';
+import { ShopScene } from '../scenes/ShopScene';
+import { FoundryScene } from '../scenes/FoundryScene';
 
 export const gameConfig: Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -42,7 +44,9 @@ export const gameConfig: Types.Core.GameConfig = {
     CharacterScene,
     QuestJournalScene,
     WorldMapScene,
-    DialogueScene
+    DialogueScene,
+    ShopScene,
+    FoundryScene
   ],
   input: {
     gamepad: true,

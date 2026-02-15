@@ -5,6 +5,7 @@ import { PerkTree } from '../systems/perks/PerkTree';
 import { QuestStateMachine, type QuestStatus } from '../systems/quests/QuestStateMachine';
 import type {
   EquipmentState,
+  EquipmentUpgradeState,
   FactionId,
   HudViewModel,
   InventoryUiEntry,
@@ -14,6 +15,7 @@ import type {
   RegionState,
   RewardPackage,
   SessionSnapshot,
+  ShopRuntimeState,
   WeaponMode
 } from './types';
 
@@ -43,6 +45,16 @@ const BASE_REPUTATIONS: Record<FactionId, number> = {
   archivists: 0,
   pilgrims: 0,
   foundry: 0
+};
+
+const BASE_UPGRADES: EquipmentUpgradeState = {
+  weapon: 0,
+  armor: 0
+};
+
+const BASE_SHOP_STATE: ShopRuntimeState = {
+  stockByListingId: {},
+  restockProgress: 0
 };
 
 interface QuestDefinitionIndex {
@@ -82,6 +94,8 @@ export class GameSession {
   private stats: PlayerStats;
   private cinders = 80;
   private equipment: EquipmentState;
+  private upgrades: EquipmentUpgradeState = { ...BASE_UPGRADES };
+  private shopState: ShopRuntimeState = { ...BASE_SHOP_STATE };
   private flags: Record<string, string | number | boolean> = {};
   private reputations: Record<FactionId, number> = { ...BASE_REPUTATIONS };
   private regions: RegionState = {
@@ -98,6 +112,14 @@ export class GameSession {
     this.stats = snapshot ? { ...snapshot.player } : { ...BASE_PLAYER };
     this.cinders = snapshot?.cinders ?? this.cinders;
     this.equipment = snapshot ? { ...snapshot.equipment, trinkets: [...snapshot.equipment.trinkets] as [string | null, string | null] } : { ...BASE_EQUIPMENT };
+    this.upgrades = {
+      weapon: snapshot?.upgrades?.weapon ?? BASE_UPGRADES.weapon,
+      armor: snapshot?.upgrades?.armor ?? BASE_UPGRADES.armor
+    };
+    this.shopState = {
+      stockByListingId: { ...(snapshot?.shop?.stockByListingId ?? {}) },
+      restockProgress: snapshot?.shop?.restockProgress ?? 0
+    };
     this.flags = { ...(snapshot?.worldFlags ?? {}) };
     this.reputations = { ...BASE_REPUTATIONS, ...(snapshot?.reputations ?? {}) };
     this.regions = snapshot ? { unlocked: [...snapshot.regions.unlocked], discovered: [...snapshot.regions.discovered] } : this.regions;
@@ -108,6 +130,7 @@ export class GameSession {
 
     this.loadContentIndexes();
     this.initializeQuests();
+    this.syncQuestFlagsFromWorldFlags();
 
     if (!snapshot) {
       this.seedStartingInventory();
@@ -138,6 +161,16 @@ export class GameSession {
     };
   }
 
+  public getEquipmentUpgrades(): EquipmentUpgradeState {
+    return { ...this.upgrades };
+  }
+
+  public setEquipmentUpgradeLevel(target: 'weapon' | 'armor', level: number): void {
+    this.upgrades[target] = Math.max(0, Math.min(5, Math.floor(level)));
+    this.recomputeDerivedStats();
+    this.log(`${target.toUpperCase()} upgraded to +${this.upgrades[target]}.`);
+  }
+
   public isAlive(): boolean {
     return this.stats.hp > 0;
   }
@@ -166,6 +199,10 @@ export class GameSession {
 
   public setFlag(flagId: string, value: string | number | boolean): void {
     this.flags[flagId] = value;
+    if (typeof value === 'boolean') {
+      this.quests.setFlag(flagId, value);
+    }
+    this.quests.syncAvailability();
   }
 
   public getFlag(flagId: string): string | number | boolean | undefined {
@@ -183,6 +220,19 @@ export class GameSession {
 
   public getItem(itemId: string): ItemData | undefined {
     return this.itemsById.get(itemId);
+  }
+
+  public getItemValue(itemId: string): number {
+    return this.itemsById.get(itemId)?.value ?? 1;
+  }
+
+  public canSellItem(itemId: string): boolean {
+    const item = this.itemsById.get(itemId);
+    if (!item) {
+      return true;
+    }
+
+    return item.type !== 'quest' && item.type !== 'key';
   }
 
   public addItem(itemId: string, amount: number, maxStack?: number): number {
@@ -292,7 +342,7 @@ export class GameSession {
 
   public getAttackPower(base: number): number {
     const effects = this.perks.getAllEffects();
-    return base + this.stats.attack + (effects.attack ?? 0);
+    return base + this.stats.attack + (effects.attack ?? 0) + this.upgrades.weapon * 3;
   }
 
   public getCritChance(): number {
@@ -317,6 +367,20 @@ export class GameSession {
 
   public getMoveSpeed(): number {
     return this.stats.moveSpeed;
+  }
+
+  public getShopRuntimeState(): ShopRuntimeState {
+    return {
+      stockByListingId: { ...this.shopState.stockByListingId },
+      restockProgress: this.shopState.restockProgress
+    };
+  }
+
+  public setShopRuntimeState(next: ShopRuntimeState): void {
+    this.shopState = {
+      stockByListingId: { ...next.stockByListingId },
+      restockProgress: next.restockProgress
+    };
   }
 
   public getPerkEffect(effectId: string): number {
@@ -470,6 +534,8 @@ export class GameSession {
       reputations: { ...this.reputations },
       perks: this.perks.serialize(),
       regions: this.getRegions(),
+      upgrades: this.getEquipmentUpgrades(),
+      shop: this.getShopRuntimeState(),
       eventLog: this.getEvents(),
       timestamp: new Date().toISOString()
     };
@@ -533,6 +599,14 @@ export class GameSession {
     }
   }
 
+  private syncQuestFlagsFromWorldFlags(): void {
+    for (const [flagId, value] of Object.entries(this.flags)) {
+      if (typeof value === 'boolean') {
+        this.quests.setFlag(flagId, value);
+      }
+    }
+  }
+
   private applyQuestRewards(questId: string): void {
     const questData = (defaultContent.quests as QuestData[]).find((entry) => entry.id === questId);
     if (!questData) {
@@ -570,7 +644,8 @@ export class GameSession {
     this.stats.maxStamina = Math.max(30, BASE_PLAYER.maxStamina + (this.stats.level - 1) * 4 + (effects.maxStamina ?? 0));
     this.stats.stamina = Math.min(this.stats.stamina, this.stats.maxStamina);
     this.stats.attack = BASE_PLAYER.attack + (this.stats.level - 1) * 2 + (effects.attack ?? 0);
-    this.stats.defense = BASE_PLAYER.defense + Math.floor((this.stats.level - 1) / 2) + (effects.defense ?? 0);
+    this.stats.defense =
+      BASE_PLAYER.defense + Math.floor((this.stats.level - 1) / 2) + (effects.defense ?? 0) + this.upgrades.armor * 2;
     this.stats.crit = BASE_PLAYER.crit + (effects.crit ?? 0);
     this.stats.moveSpeed = BASE_PLAYER.moveSpeed;
 

@@ -22,6 +22,42 @@
             ]
           },
           {
+            "id": "ask_hart_hunt",
+            "text": "Any new threat in Gloamwood?",
+            "nextNodeId": "hart_briefing",
+            "conditions": [
+              {
+                "type": "questStatus",
+                "questId": "main_hollow_hart",
+                "status": "available"
+              }
+            ]
+          },
+          {
+            "id": "hart_progress",
+            "text": "How do I handle the Hollow Hart?",
+            "nextNodeId": "hart_progress",
+            "conditions": [
+              {
+                "type": "questStatus",
+                "questId": "main_hollow_hart",
+                "status": "active"
+              }
+            ]
+          },
+          {
+            "id": "report_hart",
+            "text": "The Hollow Hart is down.",
+            "nextNodeId": "hart_after",
+            "conditions": [
+              {
+                "type": "questStatus",
+                "questId": "main_hollow_hart",
+                "status": "completed"
+              }
+            ]
+          },
+          {
             "id": "leave",
             "text": "Not now.",
             "nextNodeId": "end"
@@ -50,6 +86,59 @@
                 "amount": 1
               }
             ]
+          }
+        ]
+      },
+      {
+        "id": "hart_briefing",
+        "speakerId": "Archivist Lyra",
+        "portrait": "lyra",
+        "text": "A Hollow Hart nested in Gloamwood. Cut through its root shield and bring silence back.",
+        "tags": ["quest"],
+        "choices": [
+          {
+            "id": "accept_hart",
+            "text": "I'll hunt it.",
+            "nextNodeId": "end",
+            "effects": [
+              {
+                "type": "startQuest",
+                "questId": "main_hollow_hart"
+              },
+              {
+                "type": "setFlag",
+                "flagId": "hollow_hart_briefed",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "hart_progress",
+        "speakerId": "Archivist Lyra",
+        "portrait": "lyra",
+        "text": "Watch for orange telegraphs. When roots rise, break them first. Only then can the Hart bleed.",
+        "tags": ["quest", "lore"],
+        "choices": [
+          {
+            "id": "ack_hart_progress",
+            "text": "Understood.",
+            "nextNodeId": "end"
+          }
+        ]
+      },
+      {
+        "id": "hart_after",
+        "speakerId": "Archivist Lyra",
+        "portrait": "lyra",
+        "text": "You held the line. Mirror Marsh routes are opening again. Keep moving, Warden.",
+        "tags": ["quest", "lore"],
+        "choices": [
+          {
+            "id": "hart_after_end",
+            "text": "What's next?",
+            "nextNodeId": "end"
           }
         ]
       },

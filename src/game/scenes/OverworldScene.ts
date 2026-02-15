@@ -1,11 +1,14 @@
 import Phaser from 'phaser';
 import { defaultContent } from '../content/defaultContent';
-import { DialogueRuntime, type DialogueStateAccess } from '../systems/dialogue/DialogueRuntime';
-import { SaveRepository } from '../systems/save/SaveRepository';
+import type { EnemyData } from '../content/schemas';
 import { CraftingSystem, type CraftRecipe } from '../systems/crafting/CraftingSystem';
 import { EnemyController, type EnemyArchetype, type EnemySpawnConfig } from '../systems/combat/EnemyController';
+import { HollowHartBoss, type HollowHartPhase } from '../systems/combat/HollowHartBoss';
+import { DialogueRuntime, type DialogueStateAccess } from '../systems/dialogue/DialogueRuntime';
+import { ShopSystem, type ShopListing } from '../systems/economy/ShopSystem';
+import { SaveRepository } from '../systems/save/SaveRepository';
+import { UpgradeSystem } from '../systems/upgrades/UpgradeSystem';
 import { GameSession } from '../state/GameSession';
-import type { EnemyData } from '../content/schemas';
 import type { FactionId } from '../state/types';
 import { REGISTRY_KEYS, type UiPanel } from '../ui/registryKeys';
 
@@ -16,10 +19,54 @@ const MAP_HEIGHT = 54;
 const DODGE_SPEED = 360;
 const DODGE_COST = 24;
 
+const HOLLOW_HART_ARENA_X = 76 * TILE_SIZE;
+const HOLLOW_HART_ARENA_Y = 13 * TILE_SIZE;
+const HOLLOW_HART_START_DISTANCE = 210;
+const ROOT_MAX_HP = 88;
+
+const SHOP_LISTINGS: ShopListing[] = [
+  {
+    id: 'listing_heal_tonic',
+    itemId: 'consumable_heal_small',
+    displayName: 'Cloudleaf Tincture',
+    buyPrice: 18,
+    baseStock: 4,
+    restockTo: 7,
+    maxStack: 20
+  },
+  {
+    id: 'listing_stamina_vial',
+    itemId: 'consumable_stamina_vial',
+    displayName: 'Quicksilver Draught',
+    buyPrice: 24,
+    baseStock: 3,
+    restockTo: 6,
+    maxStack: 20
+  },
+  {
+    id: 'listing_ore_bundle',
+    itemId: 'material_iron_ore',
+    displayName: 'Iron Ore Bundle',
+    buyPrice: 11,
+    baseStock: 6,
+    restockTo: 10,
+    maxStack: 99
+  },
+  {
+    id: 'listing_cloudleaf_bundle',
+    itemId: 'material_cloudleaf',
+    displayName: 'Cloudleaf Bundle',
+    buyPrice: 10,
+    baseStock: 6,
+    restockTo: 10,
+    maxStack: 99
+  }
+];
+
 interface Interactable {
   id: string;
   label: string;
-  kind: 'cache' | 'campfire' | 'foundry' | 'savepoint' | 'npc';
+  kind: 'cache' | 'campfire' | 'foundry' | 'savepoint' | 'npc' | 'shop';
   object: Phaser.Physics.Arcade.Image;
   used: boolean;
   conversationId?: string;
@@ -36,14 +83,40 @@ interface ProjectileData {
   lifetime: number;
 }
 
+interface RootNode {
+  sprite: Phaser.Physics.Arcade.Image;
+  hp: number;
+}
+
+interface ShopPanelState {
+  title: string;
+  cinders: number;
+  restockInSeconds: number;
+  listings: Array<{ id: string; label: string; price: number; stock: number }>;
+  sellable: Array<{ itemId: string; label: string; amount: number; sellValue: number }>;
+  message: string;
+}
+
+interface FoundryPanelState {
+  cinders: number;
+  anchorDust: number;
+  weaponLevel: number;
+  armorLevel: number;
+  options: Array<{ id: string; label: string; cinders: number; anchorDust: number; disabled?: boolean }>;
+  message: string;
+}
+
 export class OverworldScene extends Phaser.Scene {
   private session!: GameSession;
   private readonly saveRepo = new SaveRepository();
+  private readonly upgrades = new UpgradeSystem();
   private crafting!: CraftingSystem;
+  private shop!: ShopSystem;
 
   private player!: Phaser.Physics.Arcade.Sprite;
   private blockers!: Phaser.Physics.Arcade.StaticGroup;
   private projectiles!: Phaser.Physics.Arcade.Group;
+  private rootGroup!: Phaser.Physics.Arcade.Group;
 
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: Record<'up' | 'down' | 'left' | 'right', Phaser.Input.Keyboard.Key>;
@@ -51,6 +124,12 @@ export class OverworldScene extends Phaser.Scene {
 
   private interactables: Interactable[] = [];
   private enemies: EnemyController[] = [];
+  private enemyArchetypes = new Map<string, EnemyArchetype>();
+
+  private hollowHart!: HollowHartBoss;
+  private roots: RootNode[] = [];
+  private rootsActive = false;
+  private rootsHintCooldown = 0;
 
   private dodgeDuration = 0;
   private dodgeCooldown = 0;
@@ -67,6 +146,9 @@ export class OverworldScene extends Phaser.Scene {
   private inventoryTab: 'All' | 'Gear' | 'Consumables' | 'Materials' | 'Quest' = 'All';
   private activeDialogue: ActiveDialogue | null = null;
 
+  private shopMessage = 'Trade with the Foundry Guild.';
+  private foundryMessage = 'Refine gear, craft supplies, and push deeper into ruins.';
+
   public constructor() {
     super('overworld');
   }
@@ -78,28 +160,37 @@ export class OverworldScene extends Phaser.Scene {
     this.session = new GameSession(loadedSave?.session);
 
     this.crafting = new CraftingSystem(defaultContent.recipes as CraftRecipe[]);
+    this.shop = new ShopSystem(SHOP_LISTINGS, this.session.getShopRuntimeState());
 
     this.createMap();
     this.createPlayer();
     this.createInteractables();
-    this.createEnemies();
     this.createProjectiles();
+    this.createEnemies();
+    this.createBossEncounter();
     this.setupInput();
     this.setupCamera();
     this.launchUiScenes();
 
     this.physics.add.collider(this.player, this.blockers);
+    this.physics.add.collider(this.player, this.rootGroup);
+    this.physics.add.collider(this.hollowHart.sprite, this.blockers);
+    this.physics.add.collider(this.player, this.hollowHart.sprite);
 
     for (const enemy of this.enemies) {
-      this.physics.add.collider(enemy.sprite, this.blockers);
-      this.physics.add.collider(this.player, enemy.sprite);
-      this.physics.add.overlap(this.projectiles, enemy.sprite, (projectileObj) => {
-        this.handleProjectileHit(projectileObj as Phaser.Physics.Arcade.Image, enemy);
-      });
+      this.bindEnemyPhysics(enemy);
     }
 
     this.physics.add.collider(this.projectiles, this.blockers, (projectileObj) => {
       projectileObj.destroy();
+    });
+
+    this.physics.add.overlap(this.projectiles, this.hollowHart.sprite, (projectileObj) => {
+      this.handleProjectileHitBoss(projectileObj as Phaser.Physics.Arcade.Image);
+    });
+
+    this.physics.add.overlap(this.projectiles, this.rootGroup, (projectileObj, rootObj) => {
+      this.handleProjectileHitRoot(projectileObj as Phaser.Physics.Arcade.Image, rootObj as Phaser.Physics.Arcade.Image);
     });
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -116,6 +207,9 @@ export class OverworldScene extends Phaser.Scene {
 
     this.game.events.on('dialogue:select', this.onDialogueChoice, this);
     this.game.events.on('dialogue:cancel', this.closeDialogue, this);
+    this.game.events.on('shop:buy', this.onShopBuy, this);
+    this.game.events.on('shop:sell', this.onShopSell, this);
+    this.game.events.on('foundry:action', this.onFoundryAction, this);
 
     this.registry.events.on(`changedata-${REGISTRY_KEYS.uiPanel}`, this.onUiPanelChange, this);
     this.registry.events.on(`changedata-${REGISTRY_KEYS.inventory}`, this.onInventoryPanelStateChange, this);
@@ -124,9 +218,13 @@ export class OverworldScene extends Phaser.Scene {
     this.publishUiState();
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.persistRuntimeState();
       this.input.removeAllListeners();
       this.game.events.off('dialogue:select', this.onDialogueChoice, this);
       this.game.events.off('dialogue:cancel', this.closeDialogue, this);
+      this.game.events.off('shop:buy', this.onShopBuy, this);
+      this.game.events.off('shop:sell', this.onShopSell, this);
+      this.game.events.off('foundry:action', this.onFoundryAction, this);
       this.registry.events.off(`changedata-${REGISTRY_KEYS.uiPanel}`, this.onUiPanelChange, this);
       this.registry.events.off(`changedata-${REGISTRY_KEYS.inventory}`, this.onInventoryPanelStateChange, this);
     });
@@ -140,10 +238,17 @@ export class OverworldScene extends Phaser.Scene {
     this.heavyCooldown = Math.max(0, this.heavyCooldown - delta);
     this.bowCooldown = Math.max(0, this.bowCooldown - delta);
     this.invulnerableTimer = Math.max(0, this.invulnerableTimer - delta);
+    this.rootsHintCooldown = Math.max(0, this.rootsHintCooldown - delta);
+
+    if (this.shop.tick(delta)) {
+      this.shopMessage = 'Fresh stock rolled in from the Foundry caravan.';
+      this.session.log('Foundry market has restocked.');
+    }
 
     this.autosaveTimer += delta;
     if (this.autosaveTimer >= 90) {
       this.autosaveTimer = 0;
+      this.persistRuntimeState();
       this.saveRepo.save(1, this.session.serialize());
       this.session.log('Autosaved to slot 2.');
     }
@@ -166,6 +271,7 @@ export class OverworldScene extends Phaser.Scene {
     const lookAhead = this.computeLookAhead();
     this.cameras.main.followOffset.set(lookAhead.x, lookAhead.y);
 
+    this.persistRuntimeState();
     this.publishUiState();
   }
 
@@ -244,6 +350,13 @@ export class OverworldScene extends Phaser.Scene {
         conversationId: 'rook_foundry'
       },
       {
+        id: 'npc-quartermaster',
+        label: 'Quartermaster Voss',
+        kind: 'shop',
+        object: createStatic(17, 11, 'npc-merchant'),
+        used: false
+      },
+      {
         id: 'npc-pilgrim',
         label: 'Pilgrim Neris',
         kind: 'npc',
@@ -283,7 +396,7 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   private createEnemies(): void {
-    const archetypes = this.createEnemyArchetypes();
+    this.enemyArchetypes = this.createEnemyArchetypes();
 
     const spawns: EnemySpawnConfig[] = [
       { enemyId: 'siltling', x: 35 * TILE_SIZE, y: 18 * TILE_SIZE, patrolRadius: 80 },
@@ -296,13 +409,25 @@ export class OverworldScene extends Phaser.Scene {
 
     this.enemies = spawns
       .map((spawn) => {
-        const archetype = archetypes.get(spawn.enemyId);
+        const archetype = this.enemyArchetypes.get(spawn.enemyId);
         if (!archetype) {
           return null;
         }
         return new EnemyController(this, archetype, spawn);
       })
       .filter((entry): entry is EnemyController => Boolean(entry));
+  }
+
+  private createBossEncounter(): void {
+    this.hollowHart = new HollowHartBoss(this, HOLLOW_HART_ARENA_X, HOLLOW_HART_ARENA_Y);
+    this.rootGroup = this.physics.add.group({ immovable: true, allowGravity: false });
+
+    if (this.session.getFlag('hollow_hart_defeated') === true) {
+      this.hollowHart.resetEncounter();
+      this.hollowHart.sprite.setVisible(false);
+      const body = this.hollowHart.sprite.body as Phaser.Physics.Arcade.Body;
+      body.enable = false;
+    }
   }
 
   private createProjectiles(): void {
@@ -349,11 +474,29 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   private launchUiScenes(): void {
-    for (const key of ['hud', 'inventory-ui', 'character-ui', 'quest-journal-ui', 'world-map-ui', 'dialogue-ui']) {
+    for (const key of [
+      'hud',
+      'inventory-ui',
+      'character-ui',
+      'quest-journal-ui',
+      'world-map-ui',
+      'dialogue-ui',
+      'shop-ui',
+      'foundry-ui'
+    ]) {
       if (!this.scene.isActive(key)) {
         this.scene.launch(key);
       }
     }
+  }
+
+  private bindEnemyPhysics(enemy: EnemyController): void {
+    this.physics.add.collider(enemy.sprite, this.blockers);
+    this.physics.add.collider(enemy.sprite, this.rootGroup);
+    this.physics.add.collider(this.player, enemy.sprite);
+    this.physics.add.overlap(this.projectiles, enemy.sprite, (projectileObj) => {
+      this.handleProjectileHit(projectileObj as Phaser.Physics.Arcade.Image, enemy);
+    });
   }
 
   private handleMovement(delta: number): void {
@@ -386,8 +529,7 @@ export class OverworldScene extends Phaser.Scene {
       return;
     }
 
-    const dodgeCost = DODGE_COST;
-    if (Phaser.Input.Keyboard.JustDown(this.keys.dodge) && this.dodgeCooldown <= 0 && this.session.spendStamina(dodgeCost)) {
+    if (Phaser.Input.Keyboard.JustDown(this.keys.dodge) && this.dodgeCooldown <= 0 && this.session.spendStamina(DODGE_COST)) {
       this.dodgeDuration = 0.17;
       this.dodgeCooldown = 0.45;
       this.invulnerableTimer = 0.19;
@@ -430,6 +572,7 @@ export class OverworldScene extends Phaser.Scene {
     }
 
     if (Phaser.Input.Keyboard.JustDown(this.keys.save)) {
+      this.persistRuntimeState();
       this.saveRepo.save(0, this.session.serialize());
       this.session.log('Manual save written to slot 1.');
     }
@@ -580,15 +723,7 @@ export class OverworldScene extends Phaser.Scene {
         continue;
       }
 
-      const toEnemy = new Phaser.Math.Vector2(enemy.sprite.x - this.player.x, enemy.sprite.y - this.player.y);
-      const distance = toEnemy.length();
-      if (distance > range) {
-        continue;
-      }
-
-      toEnemy.normalize();
-      const angle = Phaser.Math.RadToDeg(Math.acos(Phaser.Math.Clamp(this.facing.dot(toEnemy), -1, 1)));
-      if (angle > arcDeg / 2) {
+      if (!this.canHitArc(enemy.sprite.x, enemy.sprite.y, range, arcDeg)) {
         continue;
       }
 
@@ -603,6 +738,82 @@ export class OverworldScene extends Phaser.Scene {
         this.session.log(`${enemy.archetype.name} hit for ${result.damage}.`);
       }
     }
+
+    this.damageRootsInArc(range, arcDeg, baseDamage);
+    this.damageHollowHartInArc(range, arcDeg, baseDamage);
+  }
+
+  private canHitArc(targetX: number, targetY: number, range: number, arcDeg: number): boolean {
+    const toTarget = new Phaser.Math.Vector2(targetX - this.player.x, targetY - this.player.y);
+    const distance = toTarget.length();
+
+    if (distance > range || distance <= 0.001) {
+      return false;
+    }
+
+    toTarget.normalize();
+    const angle = Phaser.Math.RadToDeg(Math.acos(Phaser.Math.Clamp(this.facing.dot(toTarget), -1, 1)));
+    return angle <= arcDeg / 2;
+  }
+
+  private damageRootsInArc(range: number, arcDeg: number, baseDamage: number): void {
+    if (!this.rootsActive || this.roots.length === 0) {
+      return;
+    }
+
+    const damage = Math.max(8, Math.floor(baseDamage * 0.5));
+
+    for (const root of this.roots) {
+      if (!this.canHitArc(root.sprite.x, root.sprite.y, range + 12, arcDeg)) {
+        continue;
+      }
+
+      root.hp -= damage;
+      root.sprite.setTint(0xd09a68);
+      this.time.delayedCall(100, () => {
+        if (root.sprite.active) {
+          root.sprite.clearTint();
+        }
+      });
+
+      if (root.hp <= 0) {
+        root.sprite.destroy();
+        this.session.log('A root barrier shattered.');
+      }
+    }
+
+    this.roots = this.roots.filter((root) => root.sprite.active);
+    if (this.roots.length === 0 && this.rootsActive) {
+      this.rootsActive = false;
+      this.session.log('Root shield collapsed. Hollow Hart is exposed.');
+    }
+  }
+
+  private damageHollowHartInArc(range: number, arcDeg: number, baseDamage: number): void {
+    if (!this.hollowHart.isEncounterStarted() || this.hollowHart.isDead()) {
+      return;
+    }
+
+    if (!this.canHitArc(this.hollowHart.sprite.x, this.hollowHart.sprite.y, range + 10, arcDeg)) {
+      return;
+    }
+
+    const result = this.hollowHart.receiveDamage(baseDamage, this.session, this.rootsActive);
+
+    if (result.blockedByRoots) {
+      if (this.rootsHintCooldown <= 0) {
+        this.rootsHintCooldown = 1.1;
+        this.session.log('Roots absorb the strike. Break them first.');
+      }
+      return;
+    }
+
+    if (result.killed) {
+      this.handleHollowHartDefeated();
+      return;
+    }
+
+    this.session.log(`Hollow Hart takes ${result.damage}.`);
   }
 
   private spawnSlash(texture: 'slash-light' | 'slash-heavy', distance: number): void {
@@ -638,6 +849,73 @@ export class OverworldScene extends Phaser.Scene {
       this.handleEnemyKilled(enemy);
     } else {
       this.session.log(`${enemy.archetype.name} pierced for ${result.damage}.`);
+    }
+  }
+
+  private handleProjectileHitBoss(projectile: Phaser.Physics.Arcade.Image): void {
+    if (!projectile.active || !this.hollowHart.isEncounterStarted() || this.hollowHart.isDead()) {
+      return;
+    }
+
+    const combat = projectile.getData('combat') as ProjectileData | undefined;
+    if (!combat) {
+      projectile.destroy();
+      return;
+    }
+
+    const result = this.hollowHart.receiveDamage(combat.damage, this.session, this.rootsActive);
+    projectile.destroy();
+
+    if (result.blockedByRoots) {
+      if (this.rootsHintCooldown <= 0) {
+        this.rootsHintCooldown = 1.1;
+        this.session.log('Roots absorb the shot.');
+      }
+      return;
+    }
+
+    if (result.killed) {
+      this.handleHollowHartDefeated();
+      return;
+    }
+
+    this.session.log(`Arrow wounds Hollow Hart for ${result.damage}.`);
+  }
+
+  private handleProjectileHitRoot(projectile: Phaser.Physics.Arcade.Image, rootSprite: Phaser.Physics.Arcade.Image): void {
+    if (!projectile.active || !rootSprite.active || !this.rootsActive) {
+      return;
+    }
+
+    const combat = projectile.getData('combat') as ProjectileData | undefined;
+    projectile.destroy();
+
+    if (!combat) {
+      return;
+    }
+
+    const root = this.roots.find((entry) => entry.sprite === rootSprite);
+    if (!root) {
+      return;
+    }
+
+    root.hp -= combat.damage;
+    root.sprite.setTint(0xcf9b69);
+    this.time.delayedCall(100, () => {
+      if (root.sprite.active) {
+        root.sprite.clearTint();
+      }
+    });
+
+    if (root.hp <= 0) {
+      root.sprite.destroy();
+      this.session.log('A root barrier shattered.');
+    }
+
+    this.roots = this.roots.filter((entry) => entry.sprite.active);
+    if (this.roots.length === 0) {
+      this.rootsActive = false;
+      this.session.log('Root shield collapsed. Hollow Hart is exposed.');
     }
   }
 
@@ -678,14 +956,144 @@ export class OverworldScene extends Phaser.Scene {
       });
     }
 
+    this.updateHollowHart(delta, playerBlocking);
+
     if (!this.session.isAlive()) {
       this.registry.set(REGISTRY_KEYS.uiPanel, '');
       this.session.log('Defeat. Press F5 at a beacon after revival.');
       this.session.restAtCheckpoint();
       this.player.setPosition(10 * TILE_SIZE, 30 * TILE_SIZE);
+
+      if (!this.hollowHart.isDead()) {
+        this.hollowHart.resetEncounter();
+      }
+      this.clearRoots();
+
+      this.persistRuntimeState();
       this.saveRepo.save(2, this.session.serialize());
       this.session.log('Emergency respawn at beacon.');
     }
+  }
+
+  private updateHollowHart(delta: number, playerBlocking: boolean): void {
+    if (this.session.getFlag('hollow_hart_defeated') === true) {
+      return;
+    }
+
+    if (!this.hollowHart.isEncounterStarted()) {
+      const questStatus = this.session.getQuestStatus('main_hollow_hart');
+      if (questStatus === 'active') {
+        const distanceToArena = Phaser.Math.Distance.Between(this.player.x, this.player.y, HOLLOW_HART_ARENA_X, HOLLOW_HART_ARENA_Y);
+        if (distanceToArena <= HOLLOW_HART_START_DISTANCE) {
+          this.hollowHart.startEncounter();
+          this.session.setFlag('hollow_hart_started', true);
+          this.session.log('The Hollow Hart emerges from the grove.');
+        }
+      }
+      return;
+    }
+
+    this.hollowHart.update({
+      delta,
+      player: this.player,
+      canDamagePlayer: this.invulnerableTimer <= 0,
+      onDealDamage: (damage) => {
+        const taken = this.session.receiveDamage(damage, playerBlocking);
+        this.session.log(`Hollow Hart mauls for ${taken}.`);
+        if ((this.registry.get(REGISTRY_KEYS.settings) as { screenShake?: boolean } | undefined)?.screenShake !== false) {
+          this.cameras.main.shake(120, 0.004);
+        }
+      },
+      onPhaseChange: (phase) => this.onHollowHartPhaseChange(phase),
+      onSummonAdds: (count) => this.summonHollowHartAdds(count),
+      onSummonRoots: () => this.activateRoots(),
+      onDefeated: () => this.handleHollowHartDefeated()
+    });
+  }
+
+  private onHollowHartPhaseChange(phase: HollowHartPhase): void {
+    if (phase === 2) {
+      this.session.log('Hollow Hart enters phase 2: summons and roots.');
+      return;
+    }
+
+    if (phase === 3) {
+      this.session.log('Hollow Hart enrages. Watch the telegraphs.');
+    }
+  }
+
+  private summonHollowHartAdds(count: number): void {
+    const archetype = this.enemyArchetypes.get('siltling');
+    if (!archetype) {
+      return;
+    }
+
+    for (let i = 0; i < count; i += 1) {
+      const angle = (Math.PI * 2 * i) / count + Phaser.Math.FloatBetween(-0.2, 0.2);
+      const spawnX = this.hollowHart.sprite.x + Math.cos(angle) * 58;
+      const spawnY = this.hollowHart.sprite.y + Math.sin(angle) * 58;
+
+      const summoned = new EnemyController(this, archetype, {
+        enemyId: 'siltling',
+        x: spawnX,
+        y: spawnY,
+        patrolRadius: 42
+      });
+
+      this.bindEnemyPhysics(summoned);
+      this.enemies.push(summoned);
+    }
+
+    this.session.log(`Hollow Hart summons ${count} Siltlings.`);
+  }
+
+  private activateRoots(): void {
+    this.clearRoots();
+    this.rootsActive = true;
+
+    const positions = [
+      { x: this.hollowHart.sprite.x - 52, y: this.hollowHart.sprite.y - 30 },
+      { x: this.hollowHart.sprite.x + 54, y: this.hollowHart.sprite.y - 24 },
+      { x: this.hollowHart.sprite.x - 42, y: this.hollowHart.sprite.y + 38 },
+      { x: this.hollowHart.sprite.x + 44, y: this.hollowHart.sprite.y + 40 }
+    ];
+
+    this.roots = positions.map((position) => {
+      const root = this.physics.add.image(position.x, position.y, 'boss-root').setDepth(6).setScale(2.2).setImmovable(true);
+      root.setTint(0x54704f);
+      const body = root.body as Phaser.Physics.Arcade.Body;
+      body.allowGravity = false;
+      body.moves = false;
+      this.rootGroup.add(root);
+      return { sprite: root, hp: ROOT_MAX_HP };
+    });
+
+    this.session.log('Root shield raised. Destroy roots to damage the boss.');
+  }
+
+  private clearRoots(): void {
+    for (const root of this.roots) {
+      if (root.sprite.active) {
+        root.sprite.destroy();
+      }
+    }
+
+    this.roots = [];
+    this.rootsActive = false;
+    this.rootGroup.clear(true, true);
+  }
+
+  private handleHollowHartDefeated(): void {
+    if (this.session.getFlag('hollow_hart_defeated') === true) {
+      return;
+    }
+
+    this.clearRoots();
+    this.session.setFlag('hollow_hart_defeated', true);
+    this.session.addCinders(120);
+    this.session.awardXp(160);
+    this.session.advanceQuestObjective('main_hollow_hart', 'kill_hollow_hart', 1);
+    this.session.log('The Hollow Hart collapses. Gloamwood falls silent.');
   }
 
   private handleEnemyKilled(enemy: EnemyController): void {
@@ -727,32 +1135,19 @@ export class OverworldScene extends Phaser.Scene {
         break;
       case 'campfire':
         this.session.restAtCheckpoint();
+        this.persistRuntimeState();
         this.saveRepo.save(1, this.session.serialize());
         this.session.log('Rested and autosaved (slot 2).');
         break;
-      case 'foundry': {
-        const recipes = this.crafting.listRecipes('foundry');
-        const recipe = recipes[0];
-        if (!recipe) {
-          this.session.log('No foundry recipes unlocked.');
-          break;
-        }
-
-        const crafted = this.crafting.craft(recipe.id, this.session.inventory, this.session.getCinders());
-        if (!crafted.crafted) {
-          this.session.log('Foundry: insufficient materials/cinders.');
-          break;
-        }
-
-        const spent = this.session.getCinders() - crafted.newCinders;
-        if (spent > 0) {
-          this.session.spendCinders(spent);
-        }
+      case 'foundry':
         this.session.advanceQuestObjective('faction_foundry_trial', 'visit_foundry', 1);
-        this.session.log(`Crafted ${recipe.name}.`);
+        this.openFoundryPanel();
         break;
-      }
+      case 'shop':
+        this.openShopPanel();
+        break;
       case 'savepoint':
+        this.persistRuntimeState();
         this.saveRepo.save(0, this.session.serialize());
         this.session.log('Manual save complete (slot 1).');
         break;
@@ -768,6 +1163,95 @@ export class OverworldScene extends Phaser.Scene {
       default:
         break;
     }
+  }
+
+  private openShopPanel(): void {
+    this.shopMessage = 'Foundry stock updated every few minutes.';
+    this.registry.set(REGISTRY_KEYS.uiPanel, 'shop');
+  }
+
+  private openFoundryPanel(): void {
+    this.foundryMessage = 'Temper weapons, reinforce armor, or craft supplies.';
+    this.registry.set(REGISTRY_KEYS.uiPanel, 'foundry');
+  }
+
+  private onShopBuy(listingId: string): void {
+    const result = this.shop.buy(listingId, this.session);
+
+    if (result.ok) {
+      const itemName = this.session.getItem(result.itemId)?.name ?? result.itemId;
+      this.shopMessage = `Purchased ${itemName} for ${result.spentCinders} cinders.`;
+      this.session.log(this.shopMessage);
+      if (result.itemId === 'material_iron_ore') {
+        this.session.advanceQuestObjective('faction_foundry_trial', 'collect_ore', 1);
+      }
+      return;
+    }
+
+    this.shopMessage = result.reason ?? 'Purchase failed.';
+    this.session.log(this.shopMessage);
+  }
+
+  private onShopSell(itemId: string): void {
+    const result = this.shop.sell(itemId, 1, this.session);
+
+    if (result.ok) {
+      const itemName = this.session.getItem(result.soldItemId)?.name ?? result.soldItemId;
+      this.shopMessage = `Sold ${itemName} for ${result.earnedCinders} cinders.`;
+      this.session.log(this.shopMessage);
+      return;
+    }
+
+    this.shopMessage = result.reason ?? 'Sale failed.';
+    this.session.log(this.shopMessage);
+  }
+
+  private onFoundryAction(actionId: string): void {
+    if (actionId === 'upgrade_weapon' || actionId === 'upgrade_armor') {
+      const target = actionId === 'upgrade_weapon' ? 'weapon' : 'armor';
+      const result = this.upgrades.tryUpgrade(target, this.session);
+
+      if (result.ok) {
+        this.foundryMessage = `${target === 'weapon' ? 'Weapon' : 'Armor'} upgraded to +${result.nextLevel}.`;
+        this.session.log(this.foundryMessage);
+      } else {
+        this.foundryMessage = result.reason ?? 'Upgrade failed.';
+        this.session.log(this.foundryMessage);
+      }
+
+      this.session.advanceQuestObjective('faction_foundry_trial', 'visit_foundry', 1);
+      return;
+    }
+
+    if (!actionId.startsWith('craft:')) {
+      return;
+    }
+
+    const recipeId = actionId.replace('craft:', '');
+    const recipe = this.crafting.listRecipes('foundry').find((entry) => entry.id === recipeId);
+    if (!recipe) {
+      this.foundryMessage = `Missing recipe: ${recipeId}`;
+      this.session.log(this.foundryMessage);
+      return;
+    }
+
+    const cindersBefore = this.session.getCinders();
+    const crafted = this.crafting.craft(recipe.id, this.session.inventory, cindersBefore);
+
+    if (!crafted.crafted) {
+      this.foundryMessage = 'Insufficient materials or cinders.';
+      this.session.log(this.foundryMessage);
+      return;
+    }
+
+    const spent = cindersBefore - crafted.newCinders;
+    if (spent > 0) {
+      this.session.spendCinders(spent);
+    }
+
+    this.foundryMessage = `Crafted ${recipe.name}.`;
+    this.session.log(this.foundryMessage);
+    this.session.advanceQuestObjective('faction_foundry_trial', 'visit_foundry', 1);
   }
 
   private beginDialogue(conversationId: string, speakerLabel: string): void {
@@ -847,8 +1331,8 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   private handleInteractionPrompt(): void {
-    if (this.uiPanel === 'dialogue') {
-      this.registry.set(REGISTRY_KEYS.interaction, 'Dialogue active');
+    if (this.uiPanel !== '') {
+      this.registry.set(REGISTRY_KEYS.interaction, this.uiPanel === 'dialogue' ? 'Dialogue active' : 'Menu open');
       return;
     }
 
@@ -889,20 +1373,115 @@ export class OverworldScene extends Phaser.Scene {
 
     let region = 'cinderhaven';
 
-    if (x > 52 && y < 24) {
-      region = 'gloamwood';
-    } else if (x > 52 && y >= 24) {
-      region = 'salt_quarry';
+    if (x > 78 && y > 34) {
+      region = 'sunken_spire';
     } else if (x > 70 && y < 20) {
       region = 'mirror_marsh';
-    } else if (x > 78 && y > 34) {
-      region = 'sunken_spire';
+    } else if (x > 52 && y >= 24) {
+      region = 'salt_quarry';
+    } else if (x > 52 && y < 24) {
+      region = 'gloamwood';
     }
 
     if (region !== this.currentRegion) {
       this.currentRegion = region;
       this.session.discoverRegion(region);
+
+      if (region === 'gloamwood') {
+        this.session.advanceQuestObjective('main_hollow_hart', 'enter_gloamwood', 1);
+      }
     }
+  }
+
+  private buildShopPanelState(): ShopPanelState {
+    const listings = this.shop.listCatalog().map((listing) => ({
+      id: listing.id,
+      label: listing.displayName,
+      price: listing.buyPrice,
+      stock: listing.stock
+    }));
+
+    const sellableByItem = new Map<string, number>();
+    for (const slot of this.session.getInventoryEntries()) {
+      if (!slot.itemId || slot.amount <= 0) {
+        continue;
+      }
+
+      if (!this.session.canSellItem(slot.itemId)) {
+        continue;
+      }
+
+      sellableByItem.set(slot.itemId, (sellableByItem.get(slot.itemId) ?? 0) + slot.amount);
+    }
+
+    const sellable = [...sellableByItem.entries()]
+      .map(([itemId, amount]) => ({
+        itemId,
+        label: this.session.getItem(itemId)?.name ?? itemId,
+        amount,
+        sellValue: Math.max(1, Math.floor(this.session.getItemValue(itemId) * 0.6))
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    return {
+      title: 'Foundry Market',
+      cinders: this.session.getCinders(),
+      restockInSeconds: this.shop.getSecondsToRestock(),
+      listings,
+      sellable,
+      message: this.shopMessage
+    };
+  }
+
+  private buildFoundryPanelState(): FoundryPanelState {
+    const upgrades = this.session.getEquipmentUpgrades();
+    const anchorDust = this.session.countItem('key_anchor_dust');
+    const cinders = this.session.getCinders();
+
+    const options: FoundryPanelState['options'] = [];
+
+    const weaponNext = upgrades.weapon + 1;
+    const weaponCost = upgrades.weapon >= 5 ? { cinders: 0, anchorDust: 0 } : this.upgrades.getUpgradeCost('weapon', weaponNext);
+    options.push({
+      id: 'upgrade_weapon',
+      label: upgrades.weapon >= 5 ? 'Temper Weapon (MAX)' : `Temper Weapon -> +${weaponNext}`,
+      cinders: weaponCost.cinders,
+      anchorDust: weaponCost.anchorDust,
+      disabled: upgrades.weapon >= 5 || cinders < weaponCost.cinders || anchorDust < weaponCost.anchorDust
+    });
+
+    const armorNext = upgrades.armor + 1;
+    const armorCost = upgrades.armor >= 5 ? { cinders: 0, anchorDust: 0 } : this.upgrades.getUpgradeCost('armor', armorNext);
+    options.push({
+      id: 'upgrade_armor',
+      label: upgrades.armor >= 5 ? 'Reinforce Armor (MAX)' : `Reinforce Armor -> +${armorNext}`,
+      cinders: armorCost.cinders,
+      anchorDust: armorCost.anchorDust,
+      disabled: upgrades.armor >= 5 || cinders < armorCost.cinders || anchorDust < armorCost.anchorDust
+    });
+
+    for (const recipe of this.crafting.listRecipes('foundry')) {
+      options.push({
+        id: `craft:${recipe.id}`,
+        label: `Craft ${recipe.name}`,
+        cinders: recipe.cindersCost,
+        anchorDust: 0,
+        disabled: !this.crafting.canCraft(recipe.id, this.session.inventory, this.session.getCinders())
+      });
+    }
+
+    return {
+      cinders,
+      anchorDust,
+      weaponLevel: upgrades.weapon,
+      armorLevel: upgrades.armor,
+      options,
+      message: this.foundryMessage
+    };
+  }
+
+  private persistRuntimeState(): void {
+    this.session.setShopRuntimeState(this.shop.serialize());
   }
 
   private publishUiState(): void {
@@ -914,6 +1493,9 @@ export class OverworldScene extends Phaser.Scene {
       cinders: this.session.getCinders(),
       equipment: this.session.getEquipment()
     });
+
+    this.registry.set(REGISTRY_KEYS.shop, this.buildShopPanelState());
+    this.registry.set(REGISTRY_KEYS.foundry, this.buildFoundryPanelState());
 
     const stats = this.session.getStats();
     this.registry.set(REGISTRY_KEYS.character, {

@@ -45,6 +45,64 @@
     }
   },
   {
+    "id": "main_hollow_hart",
+    "title": "Heartwood in Ash",
+    "description": "Track and defeat the Hollow Hart in Gloamwood before the Silt consumes the grove.",
+    "category": "main",
+    "prerequisites": {
+      "flags": [
+        {
+          "id": "talked_to_archivist",
+          "equals": true
+        }
+      ],
+      "quests": ["main_find_anchordust"]
+    },
+    "objectives": [
+      {
+        "id": "enter_gloamwood",
+        "type": "enter_zone",
+        "targetId": "gloamwood",
+        "required": 1
+      },
+      {
+        "id": "kill_hollow_hart",
+        "type": "kill",
+        "targetId": "hollow_hart",
+        "required": 1
+      }
+    ],
+    "rewards": {
+      "items": [
+        {
+          "itemId": "key_anchor_dust",
+          "amount": 2
+        }
+      ],
+      "cinders": 220,
+      "xp": 320,
+      "reputation": [
+        {
+          "factionId": "archivists",
+          "amount": 10
+        },
+        {
+          "factionId": "foundry",
+          "amount": 4
+        }
+      ]
+    },
+    "onComplete": {
+      "setFlags": [
+        {
+          "id": "gate_mirror_marsh_unlocked",
+          "value": true
+        }
+      ],
+      "unlockRegions": ["mirror_marsh"]
+    }
+  },
+  {
     "id": "side_herbal_supplies",
     "title": "Green in the Ash",
     "description": "Collect cloudleaf for the Archivists' infirmary.",

@@ -46,6 +46,16 @@ export interface RegionState {
   discovered: string[];
 }
 
+export interface EquipmentUpgradeState {
+  weapon: number;
+  armor: number;
+}
+
+export interface ShopRuntimeState {
+  stockByListingId: Record<string, number>;
+  restockProgress: number;
+}
+
 export interface RewardPackage {
   cinders?: number;
   xp?: number;
@@ -97,6 +107,8 @@ export interface SessionSnapshot {
   reputations: Record<FactionId, number>;
   perks: PerkState;
   regions: RegionState;
+  upgrades?: EquipmentUpgradeState;
+  shop?: ShopRuntimeState;
   eventLog: string[];
   timestamp: string;
 }

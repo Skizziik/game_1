@@ -13,16 +13,20 @@ const KENNEY_FRAMES = {
   npcArchivist: 60,
   npcRook: 62,
   npcPilgrim: 63,
+  npcMerchant: 64,
   chest: 2,
   campfire: 14,
   foundry: 40,
-  savepoint: 30
+  savepoint: 30,
+  bossRoot: 41
 } as const;
 
 const CREATURE_FRAMES = {
   siltling: 98,
   groveStalker: 123,
-  quarryBrute: 171
+  quarryBrute: 171,
+  echoWisp: 90,
+  hollowHart: 146
 } as const;
 
 export class BootScene extends Phaser.Scene {
@@ -53,15 +57,19 @@ export class BootScene extends Phaser.Scene {
     this.createTextureFromFrame('npc-archivist', KENNEY_SHEET, KENNEY_FRAMES.npcArchivist);
     this.createTextureFromFrame('npc-rook', KENNEY_SHEET, KENNEY_FRAMES.npcRook);
     this.createTextureFromFrame('npc-pilgrim', KENNEY_SHEET, KENNEY_FRAMES.npcPilgrim);
+    this.createTextureFromFrame('npc-merchant', KENNEY_SHEET, KENNEY_FRAMES.npcMerchant);
 
     this.createTextureFromFrame('chest', KENNEY_SHEET, KENNEY_FRAMES.chest);
     this.createTextureFromFrame('campfire', KENNEY_SHEET, KENNEY_FRAMES.campfire);
     this.createTextureFromFrame('foundry', KENNEY_SHEET, KENNEY_FRAMES.foundry);
     this.createTextureFromFrame('savepoint', KENNEY_SHEET, KENNEY_FRAMES.savepoint);
+    this.createTextureFromFrame('boss-root', KENNEY_SHEET, KENNEY_FRAMES.bossRoot);
 
     this.createTextureFromFrame('enemy-siltling', CREATURE_SHEET, CREATURE_FRAMES.siltling);
     this.createTextureFromFrame('enemy-grove_stalker', CREATURE_SHEET, CREATURE_FRAMES.groveStalker);
     this.createTextureFromFrame('enemy-quarry_brute', CREATURE_SHEET, CREATURE_FRAMES.quarryBrute);
+    this.createTextureFromFrame('enemy-echo_wisp', CREATURE_SHEET, CREATURE_FRAMES.echoWisp);
+    this.createTextureFromFrame('boss-hollow-hart', CREATURE_SHEET, CREATURE_FRAMES.hollowHart);
 
     this.createProjectileTexture('arrow', 0xd4d2ca, 0x6e6657);
     this.createSlashTexture('slash-light', 0xeecf87, 0.65);
