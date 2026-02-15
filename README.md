@@ -33,6 +33,10 @@ Current state: **expanded vertical slice foundation** with integrated combat, en
   - migration path up to `saveVersion=3`
 - Content pipeline:
   - JSON schemas + validator (items/enemies/quests/dialogues/perks/recipes/regions)
+- CC0 asset integration:
+  - Kenney Tiny Dungeon tiles
+  - Tiny Creatures sprite set
+  - source/license registry in `docs/assets-sources.md`
 - CI:
   - content validation + tests + build
 

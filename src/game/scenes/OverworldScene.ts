@@ -191,17 +191,18 @@ export class OverworldScene extends Phaser.Scene {
         const blocked = border || wallClusters;
 
         if (water) {
-          this.add.image(px, py, 'tile-water').setOrigin(0);
+          this.add.image(px, py, 'tile-water').setOrigin(0).setScale(2);
         } else if (marsh) {
-          this.add.image(px, py, 'tile-marsh').setOrigin(0);
+          this.add.image(px, py, 'tile-marsh').setOrigin(0).setScale(2);
         } else if (path) {
-          this.add.image(px, py, 'tile-path').setOrigin(0);
+          this.add.image(px, py, 'tile-path').setOrigin(0).setScale(2);
         } else {
-          this.add.image(px, py, blocked ? 'tile-wall' : 'tile-ground').setOrigin(0);
+          this.add.image(px, py, blocked ? 'tile-wall' : 'tile-ground').setOrigin(0).setScale(2);
         }
 
         if (blocked) {
           const obstacle = this.blockers.create(px + TILE_SIZE / 2, py + TILE_SIZE / 2, 'tile-wall');
+          obstacle.setScale(2);
           obstacle.refreshBody();
         }
       }
@@ -212,16 +213,17 @@ export class OverworldScene extends Phaser.Scene {
 
   private createPlayer(): void {
     this.player = this.physics.add.sprite(7 * TILE_SIZE, 8 * TILE_SIZE, 'player');
+    this.player.setScale(2);
     this.player.setDepth(5);
     this.player.setDrag(900, 900);
     this.player.setCollideWorldBounds(true);
-    this.player.setSize(20, 26);
-    this.player.setOffset(6, 4);
+    this.player.setSize(18, 20);
+    this.player.setOffset(7, 6);
   }
 
   private createInteractables(): void {
     const createStatic = (x: number, y: number, texture: string): Phaser.Physics.Arcade.Image => {
-      return this.physics.add.staticImage(x * TILE_SIZE, y * TILE_SIZE, texture).setDepth(4).setScale(0.95);
+      return this.physics.add.staticImage(x * TILE_SIZE, y * TILE_SIZE, texture).setDepth(4).setScale(2);
     };
 
     this.interactables = [

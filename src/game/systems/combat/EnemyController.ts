@@ -55,8 +55,10 @@ export class EnemyController {
     this.hp = archetype.maxHp;
 
     this.sprite = this.scene.physics.add.sprite(spawn.x, spawn.y, `enemy-${archetype.id}`);
+    this.sprite.setScale(2);
     this.sprite.setDepth(2);
-    this.sprite.setSize(24, 24);
+    this.sprite.setSize(20, 20);
+    this.sprite.setOffset(6, 6);
     this.sprite.setCollideWorldBounds(true);
 
     this.patrolOrigin = new Phaser.Math.Vector2(spawn.x, spawn.y);
