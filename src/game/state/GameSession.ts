@@ -249,9 +249,48 @@ export class GameSession {
     const received = amount - overflow;
     if (received > 0) {
       this.log(`Received ${item?.name ?? itemId} x${received}.`);
+      this.recordObjectiveProgress('collect', itemId, received);
     }
 
     return overflow;
+  }
+
+  public recordObjectiveProgress(
+    objectiveType: 'kill' | 'collect' | 'talk' | 'enter_zone' | 'solve_puzzle',
+    targetId: string,
+    amount = 1
+  ): void {
+    const progressAmount = Math.max(1, Math.floor(amount));
+
+    for (const questData of defaultContent.quests as QuestData[]) {
+      const activeQuest = this.quests.getQuest(questData.id);
+      if (!activeQuest || activeQuest.status !== 'active') {
+        continue;
+      }
+
+      for (const objective of questData.objectives) {
+        if (objective.type !== objectiveType || objective.targetId !== targetId) {
+          continue;
+        }
+
+        const runtimeObjective = activeQuest.objectives.find((entry) => entry.id === objective.id);
+        if (!runtimeObjective) {
+          continue;
+        }
+
+        const remaining = runtimeObjective.required - runtimeObjective.progress;
+        if (remaining <= 0) {
+          continue;
+        }
+
+        this.quests.advanceObjective(questData.id, objective.id, Math.min(remaining, progressAmount));
+
+        const updated = this.quests.getQuest(questData.id);
+        if (updated?.status === 'completed') {
+          this.applyQuestRewards(questData.id);
+        }
+      }
+    }
   }
 
   public removeItem(itemId: string, amount: number): number {

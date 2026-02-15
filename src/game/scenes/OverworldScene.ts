@@ -1092,7 +1092,7 @@ export class OverworldScene extends Phaser.Scene {
     this.session.setFlag('hollow_hart_defeated', true);
     this.session.addCinders(120);
     this.session.awardXp(160);
-    this.session.advanceQuestObjective('main_hollow_hart', 'kill_hollow_hart', 1);
+    this.session.recordObjectiveProgress('kill', 'hollow_hart', 1);
     this.session.log('The Hollow Hart collapses. Gloamwood falls silent.');
   }
 
@@ -1100,9 +1100,7 @@ export class OverworldScene extends Phaser.Scene {
     enemy.applyDeathRewards(this.session);
     this.session.log(`${enemy.archetype.name} defeated.`);
 
-    if (enemy.archetype.id === 'siltling') {
-      this.session.advanceQuestObjective('bounty_clear_siltlings', 'kill_siltlings', 1);
-    }
+    this.session.recordObjectiveProgress('kill', enemy.archetype.id, 1);
 
     const body = enemy.sprite.body as Phaser.Physics.Arcade.Body | null;
     if (body) {
@@ -1126,7 +1124,6 @@ export class OverworldScene extends Phaser.Scene {
           this.session.addItem('key_anchor_dust', 1);
           this.session.addCinders(25 + bonus);
           this.session.awardXp(30);
-          this.session.advanceQuestObjective('main_find_anchordust', 'loot_cache', 1);
           this.session.log('Cache opened: Anchor Dust secured.');
           nearest.object.setTint(0x5d4f3a);
         } else {
@@ -1140,7 +1137,7 @@ export class OverworldScene extends Phaser.Scene {
         this.session.log('Rested and autosaved (slot 2).');
         break;
       case 'foundry':
-        this.session.advanceQuestObjective('faction_foundry_trial', 'visit_foundry', 1);
+        this.session.recordObjectiveProgress('talk', 'foundry_station', 1);
         this.openFoundryPanel();
         break;
       case 'shop':
@@ -1154,7 +1151,7 @@ export class OverworldScene extends Phaser.Scene {
       case 'npc':
         if (nearest.conversationId) {
           if (nearest.id === 'npc-rook') {
-            this.session.advanceQuestObjective('main_find_anchordust', 'talk_rook', 1);
+            this.session.recordObjectiveProgress('talk', 'npc_rook', 1);
           }
 
           this.beginDialogue(nearest.conversationId, nearest.label);
@@ -1182,9 +1179,6 @@ export class OverworldScene extends Phaser.Scene {
       const itemName = this.session.getItem(result.itemId)?.name ?? result.itemId;
       this.shopMessage = `Purchased ${itemName} for ${result.spentCinders} cinders.`;
       this.session.log(this.shopMessage);
-      if (result.itemId === 'material_iron_ore') {
-        this.session.advanceQuestObjective('faction_foundry_trial', 'collect_ore', 1);
-      }
       return;
     }
 
@@ -1386,10 +1380,7 @@ export class OverworldScene extends Phaser.Scene {
     if (region !== this.currentRegion) {
       this.currentRegion = region;
       this.session.discoverRegion(region);
-
-      if (region === 'gloamwood') {
-        this.session.advanceQuestObjective('main_hollow_hart', 'enter_gloamwood', 1);
-      }
+      this.session.recordObjectiveProgress('enter_zone', region, 1);
     }
   }
 
