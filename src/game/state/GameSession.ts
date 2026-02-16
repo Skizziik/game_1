@@ -99,7 +99,7 @@ export class GameSession {
   private flags: Record<string, string | number | boolean> = {};
   private reputations: Record<FactionId, number> = { ...BASE_REPUTATIONS };
   private regions: RegionState = {
-    unlocked: ['cinderhaven', 'gloamwood'],
+    unlocked: ['cinderhaven'],
     discovered: ['cinderhaven']
   };
   private readonly eventLog: string[] = [];

@@ -67,10 +67,13 @@ const SHOP_LISTINGS: ShopListing[] = [
 interface Interactable {
   id: string;
   label: string;
-  kind: 'cache' | 'campfire' | 'foundry' | 'savepoint' | 'npc' | 'shop';
+  kind: 'cache' | 'campfire' | 'foundry' | 'savepoint' | 'npc' | 'shop' | 'gate';
   object: Phaser.Physics.Arcade.Image;
   used: boolean;
   conversationId?: string;
+  requiredFlag?: string;
+  lockedMessage?: string;
+  unlockRegionId?: string;
 }
 
 interface ActiveDialogue {
@@ -268,6 +271,7 @@ export class OverworldScene extends Phaser.Scene {
 
     this.updateProjectiles(delta);
     this.session.regenStamina(delta);
+    this.refreshGateStates();
     this.handleInteractionPrompt();
     this.updateRegionTracking();
 
@@ -394,8 +398,37 @@ export class OverworldScene extends Phaser.Scene {
         kind: 'savepoint',
         object: createStatic(10, 30, 'savepoint'),
         used: false
+      },
+      {
+        id: 'gate-gloamwood',
+        label: 'Gloamwood Gate',
+        kind: 'gate',
+        object: createStatic(52, 23, 'tile-wall'),
+        used: false,
+        requiredFlag: 'gate_gloamwood_unlocked',
+        lockedMessage: 'Gate is sealed. Rook needs Anchor residue first.',
+        unlockRegionId: 'gloamwood'
+      },
+      {
+        id: 'gate-mirror-marsh',
+        label: 'Mirror Marsh Gate',
+        kind: 'gate',
+        object: createStatic(70, 16, 'tile-wall'),
+        used: false,
+        requiredFlag: 'gate_mirror_marsh_unlocked',
+        lockedMessage: 'Mirror Marsh route is still unstable. Secure Gloamwood first.',
+        unlockRegionId: 'mirror_marsh'
       }
     ];
+
+    for (const interactable of this.interactables) {
+      if (interactable.kind !== 'gate') {
+        continue;
+      }
+
+      interactable.object.setScale(2).setTint(0x736955).setDepth(4);
+      this.physics.add.collider(this.player, interactable.object);
+    }
   }
 
   private createEnemies(): void {
@@ -1173,6 +1206,18 @@ export class OverworldScene extends Phaser.Scene {
           this.beginDialogue(nearest.conversationId, nearest.label);
         }
         break;
+      case 'gate': {
+        if (!this.isGateUnlocked(nearest)) {
+          this.session.log(nearest.lockedMessage ?? 'The gate is locked.');
+          break;
+        }
+
+        if (nearest.unlockRegionId) {
+          this.session.unlockRegion(nearest.unlockRegionId);
+        }
+        this.session.log(`${nearest.label} is open.`);
+        break;
+      }
       default:
         break;
     }
@@ -1353,7 +1398,43 @@ export class OverworldScene extends Phaser.Scene {
       return;
     }
 
+    if (nearest.kind === 'gate') {
+      this.registry.set(REGISTRY_KEYS.interaction, this.isGateUnlocked(nearest) ? `E: ${nearest.label}` : `E: ${nearest.label} [Locked]`);
+      return;
+    }
+
     this.registry.set(REGISTRY_KEYS.interaction, `E: ${nearest.label}`);
+  }
+
+  private refreshGateStates(): void {
+    for (const interactable of this.interactables) {
+      if (interactable.kind !== 'gate') {
+        continue;
+      }
+
+      const unlocked = this.isGateUnlocked(interactable);
+      const body = interactable.object.body as Phaser.Physics.Arcade.StaticBody | null;
+      if (body) {
+        body.enable = !unlocked;
+      }
+      interactable.object.setVisible(!unlocked);
+    }
+  }
+
+  private isGateUnlocked(interactable: Interactable): boolean {
+    if (interactable.kind !== 'gate') {
+      return true;
+    }
+
+    if (interactable.requiredFlag) {
+      return this.session.getFlag(interactable.requiredFlag) === true;
+    }
+
+    if (interactable.unlockRegionId) {
+      return this.session.getRegions().unlocked.includes(interactable.unlockRegionId);
+    }
+
+    return false;
   }
 
   private getNearestInteractable(maxDistance: number): Interactable | null {
