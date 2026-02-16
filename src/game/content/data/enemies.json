@@ -67,5 +67,28 @@
       "offsetX": 3,
       "offsetY": 6
     }
+  },
+  {
+    "id": "echo_wisp",
+    "name": "Echo Wisp",
+    "hp": 48,
+    "attack": 14,
+    "defense": 2,
+    "speed": 105,
+    "lootTableId": "loot_echo_wisp",
+    "aiProfileId": "ai_ranged_wisp",
+    "animations": {
+      "idle": "wisp_idle",
+      "walk": "wisp_float",
+      "attack": "wisp_cast",
+      "hurt": "wisp_hurt",
+      "death": "wisp_dissolve"
+    },
+    "hitbox": {
+      "width": 18,
+      "height": 18,
+      "offsetX": 7,
+      "offsetY": 7
+    }
   }
 ]

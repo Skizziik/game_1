@@ -38,4 +38,16 @@ describe('Content validation', () => {
     expect(result.ok).toBe(false);
     expect(result.errors.some((entry) => entry.includes('contains a cycle'))).toBe(true);
   });
+
+  it('detects enemies that reference missing loot tables', () => {
+    const result = validateContent({
+      ...defaultContent,
+      enemies: defaultContent.enemies.map((enemy, index) =>
+        index === 0 ? { ...enemy, lootTableId: 'loot_missing' } : enemy
+      )
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((entry) => entry.includes('unknown loot table'))).toBe(true);
+  });
 });

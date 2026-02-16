@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { GameSession } from '../../state/GameSession';
 
 export type EnemyState = 'patrol' | 'investigate' | 'chase' | 'attack_telegraph' | 'retreat' | 'dead';
+export type EnemyAiProfile = 'ai_melee_basic' | 'ai_skirmisher' | 'ai_tank' | 'ai_ranged_wisp';
 
 export interface EnemyArchetype {
   id: string;
@@ -16,6 +17,14 @@ export interface EnemyArchetype {
   retreatThreshold: number;
   xpReward: number;
   cindersReward: number;
+  lootTableId: string;
+  aiProfileId: EnemyAiProfile;
+  hitbox: {
+    width: number;
+    height: number;
+    offsetX: number;
+    offsetY: number;
+  };
 }
 
 export interface EnemySpawnConfig {
@@ -57,9 +66,13 @@ export class EnemyController {
     this.sprite = this.scene.physics.add.sprite(spawn.x, spawn.y, `enemy-${archetype.id}`);
     this.sprite.setScale(2);
     this.sprite.setDepth(2);
-    this.sprite.setSize(20, 20);
-    this.sprite.setOffset(6, 6);
+    this.sprite.setSize(archetype.hitbox.width, archetype.hitbox.height);
+    this.sprite.setOffset(archetype.hitbox.offsetX, archetype.hitbox.offsetY);
     this.sprite.setCollideWorldBounds(true);
+
+    if (this.isRangedProfile()) {
+      this.sprite.setTint(0x87c7bf);
+    }
 
     this.patrolOrigin = new Phaser.Math.Vector2(spawn.x, spawn.y);
     this.patrolTarget = this.randomPatrolTarget(spawn.patrolRadius);
@@ -97,6 +110,9 @@ export class EnemyController {
 
     if (this.hitFlash <= 0) {
       this.sprite.clearTint();
+      if (this.isRangedProfile()) {
+        this.sprite.setTint(0x87c7bf);
+      }
     }
 
     const distanceToPlayer = Phaser.Math.Distance.Between(
@@ -124,18 +140,24 @@ export class EnemyController {
         this.moveToTarget(this.investigateTarget, this.archetype.moveSpeed * 0.85);
         if (distanceToPlayer <= this.archetype.aggroRange) {
           this.state = 'chase';
-        } else if (Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, this.investigateTarget.x, this.investigateTarget.y) < 8) {
+        } else if (
+          Phaser.Math.Distance.Between(this.sprite.x, this.sprite.y, this.investigateTarget.x, this.investigateTarget.y) < 8
+        ) {
           this.state = 'patrol';
         }
         break;
       case 'chase':
-        this.moveToTarget(new Phaser.Math.Vector2(context.player.x, context.player.y), this.archetype.moveSpeed);
+        if (this.isRangedProfile()) {
+          this.updateRangedPositioning(context.player, distanceToPlayer);
+        } else {
+          this.moveToTarget(new Phaser.Math.Vector2(context.player.x, context.player.y), this.archetype.moveSpeed);
+        }
 
         if (distanceToPlayer <= this.archetype.attackRange && this.attackCooldown <= 0) {
           this.state = 'attack_telegraph';
-          this.telegraphTimer = 0.38;
+          this.telegraphTimer = this.getTelegraphDuration();
           this.sprite.setTint(0xe4bc6c);
-        } else if (distanceToPlayer > this.archetype.aggroRange * 1.5) {
+        } else if (distanceToPlayer > this.getAggroLeash()) {
           this.state = 'investigate';
           this.investigateTarget.set(context.player.x, context.player.y);
         }
@@ -143,15 +165,19 @@ export class EnemyController {
       case 'attack_telegraph':
         this.sprite.setVelocity(0, 0);
         if (this.telegraphTimer <= 0) {
-          this.attackCooldown = 1.2;
+          this.attackCooldown = this.getAttackCooldown();
           this.state = this.hp <= this.archetype.maxHp * this.archetype.retreatThreshold ? 'retreat' : 'chase';
 
-          if (distanceToPlayer <= this.archetype.attackRange + 10 && context.canDamagePlayer) {
-            const damage = context.playerBlocking ? Math.floor(this.archetype.attack * 0.6) : this.archetype.attack;
+          if (distanceToPlayer <= this.getAttackHitRange() && context.canDamagePlayer) {
+            const blockedMul = this.isRangedProfile() ? 0.72 : 0.6;
+            const damage = context.playerBlocking ? Math.floor(this.archetype.attack * blockedMul) : this.archetype.attack;
             context.onDealDamage(damage);
           }
 
           this.sprite.clearTint();
+          if (this.isRangedProfile()) {
+            this.sprite.setTint(0x87c7bf);
+          }
         }
         break;
       case 'retreat': {
@@ -212,6 +238,10 @@ export class EnemyController {
     this.sprite.destroy();
   }
 
+  private isRangedProfile(): boolean {
+    return this.archetype.aiProfileId === 'ai_ranged_wisp';
+  }
+
   private updatePatrol(_delta: number): void {
     this.moveToTarget(this.patrolTarget, this.archetype.moveSpeed * 0.75);
 
@@ -227,6 +257,39 @@ export class EnemyController {
     }
   }
 
+  private updateRangedPositioning(player: Phaser.Physics.Arcade.Sprite, distanceToPlayer: number): void {
+    const desiredMin = this.archetype.attackRange * 0.56;
+    const desiredMax = this.archetype.attackRange * 0.9;
+
+    if (distanceToPlayer < desiredMin) {
+      const away = new Phaser.Math.Vector2(this.sprite.x - player.x, this.sprite.y - player.y);
+      if (away.lengthSq() <= 0.001) {
+        away.set(1, 0);
+      }
+      away.normalize();
+      this.sprite.setVelocity(away.x * this.archetype.moveSpeed, away.y * this.archetype.moveSpeed);
+      return;
+    }
+
+    if (distanceToPlayer > desiredMax) {
+      this.moveToTarget(new Phaser.Math.Vector2(player.x, player.y), this.archetype.moveSpeed * 0.88);
+      return;
+    }
+
+    const toPlayer = new Phaser.Math.Vector2(player.x - this.sprite.x, player.y - this.sprite.y);
+    if (toPlayer.lengthSq() <= 0.001) {
+      this.sprite.setVelocity(0, 0);
+      return;
+    }
+
+    toPlayer.normalize();
+    const lateral = new Phaser.Math.Vector2(-toPlayer.y, toPlayer.x);
+    const driftDirection = Math.sin(this.scene.time.now * 0.0047) > 0 ? 1 : -1;
+    const driftSpeed = this.archetype.moveSpeed * 0.55;
+
+    this.sprite.setVelocity(lateral.x * driftSpeed * driftDirection, lateral.y * driftSpeed * driftDirection);
+  }
+
   private moveToTarget(target: Phaser.Math.Vector2, speed: number): void {
     const direction = new Phaser.Math.Vector2(target.x - this.sprite.x, target.y - this.sprite.y);
 
@@ -237,6 +300,54 @@ export class EnemyController {
 
     direction.normalize();
     this.sprite.setVelocity(direction.x * speed, direction.y * speed);
+  }
+
+  private getTelegraphDuration(): number {
+    if (this.archetype.aiProfileId === 'ai_tank') {
+      return 0.44;
+    }
+
+    if (this.archetype.aiProfileId === 'ai_skirmisher') {
+      return 0.32;
+    }
+
+    if (this.isRangedProfile()) {
+      return 0.46;
+    }
+
+    return 0.38;
+  }
+
+  private getAttackCooldown(): number {
+    if (this.archetype.aiProfileId === 'ai_tank') {
+      return 1.35;
+    }
+
+    if (this.archetype.aiProfileId === 'ai_skirmisher') {
+      return 1.05;
+    }
+
+    if (this.isRangedProfile()) {
+      return 1.55;
+    }
+
+    return 1.2;
+  }
+
+  private getAttackHitRange(): number {
+    if (this.isRangedProfile()) {
+      return this.archetype.attackRange + 36;
+    }
+
+    return this.archetype.attackRange + 10;
+  }
+
+  private getAggroLeash(): number {
+    if (this.isRangedProfile()) {
+      return this.archetype.aggroRange * 1.8;
+    }
+
+    return this.archetype.aggroRange * 1.5;
   }
 
   private randomPatrolTarget(radius: number): Phaser.Math.Vector2 {

@@ -1,0 +1,33 @@
+[
+  {
+    "id": "loot_siltling",
+    "entries": [
+      { "itemId": "material_cloudleaf", "chance": 0.38, "minAmount": 1, "maxAmount": 2 },
+      { "itemId": "consumable_heal_small", "chance": 0.08, "minAmount": 1, "maxAmount": 1 }
+    ]
+  },
+  {
+    "id": "loot_grove_stalker",
+    "entries": [
+      { "itemId": "material_cloudleaf", "chance": 0.5, "minAmount": 1, "maxAmount": 3 },
+      { "itemId": "consumable_stamina_vial", "chance": 0.14, "minAmount": 1, "maxAmount": 1 },
+      { "itemId": "key_anchor_dust", "chance": 0.05, "minAmount": 1, "maxAmount": 1 }
+    ]
+  },
+  {
+    "id": "loot_quarry_brute",
+    "entries": [
+      { "itemId": "material_iron_ore", "chance": 0.72, "minAmount": 2, "maxAmount": 5 },
+      { "itemId": "consumable_stamina_vial", "chance": 0.24, "minAmount": 1, "maxAmount": 1 },
+      { "itemId": "key_anchor_dust", "chance": 0.2, "minAmount": 1, "maxAmount": 1 }
+    ]
+  },
+  {
+    "id": "loot_echo_wisp",
+    "entries": [
+      { "itemId": "material_cloudleaf", "chance": 0.3, "minAmount": 1, "maxAmount": 2 },
+      { "itemId": "consumable_stamina_vial", "chance": 0.2, "minAmount": 1, "maxAmount": 1 },
+      { "itemId": "key_anchor_dust", "chance": 0.28, "minAmount": 1, "maxAmount": 1 }
+    ]
+  }
+]

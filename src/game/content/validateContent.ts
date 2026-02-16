@@ -3,6 +3,7 @@ import {
   dialogueSchema,
   enemySchema,
   itemSchema,
+  lootTableSchema,
   perkSchema,
   questSchema,
   recipeSchema,
@@ -10,6 +11,7 @@ import {
   type DialogueData,
   type EnemyData,
   type ItemData,
+  type LootTableData,
   type PerkData,
   type QuestData,
   type RecipeData,
@@ -19,6 +21,7 @@ import {
 export interface ContentBundle {
   items: unknown[];
   enemies: unknown[];
+  lootTables: unknown[];
   quests: unknown[];
   dialogues: unknown[];
   perks: unknown[];
@@ -32,6 +35,7 @@ export interface ContentValidationResult {
   parsed?: {
     items: ItemData[];
     enemies: EnemyData[];
+    lootTables: LootTableData[];
     quests: QuestData[];
     dialogues: DialogueData[];
     perks: PerkData[];
@@ -45,24 +49,50 @@ export function validateContent(bundle: ContentBundle): ContentValidationResult 
 
   const itemResult = parseCollection('items', bundle.items, itemSchema, errors);
   const enemyResult = parseCollection('enemies', bundle.enemies, enemySchema, errors);
+  const lootTableResult = parseCollection('lootTables', bundle.lootTables, lootTableSchema, errors);
   const questResult = parseCollection('quests', bundle.quests, questSchema, errors);
   const dialogueResult = parseCollection('dialogues', bundle.dialogues, dialogueSchema, errors);
   const perkResult = parseCollection('perks', bundle.perks, perkSchema, errors);
   const recipeResult = parseCollection('recipes', bundle.recipes, recipeSchema, errors);
   const regionResult = parseCollection('regions', bundle.regions, regionSchema, errors);
 
-  if (!itemResult || !enemyResult || !questResult || !dialogueResult || !perkResult || !recipeResult || !regionResult) {
+  if (
+    !itemResult ||
+    !enemyResult ||
+    !lootTableResult ||
+    !questResult ||
+    !dialogueResult ||
+    !perkResult ||
+    !recipeResult ||
+    !regionResult
+  ) {
     return { ok: false, errors };
   }
 
   const itemIds = new Set(itemResult.map((item) => item.id));
+  const lootTableIds = new Set(lootTableResult.map((table) => table.id));
   checkDuplicateIds(itemResult.map((item) => item.id), 'items', errors);
   checkDuplicateIds(enemyResult.map((enemy) => enemy.id), 'enemies', errors);
+  checkDuplicateIds(lootTableResult.map((table) => table.id), 'lootTables', errors);
   checkDuplicateIds(questResult.map((quest) => quest.id), 'quests', errors);
   checkDuplicateIds(dialogueResult.map((dialogue) => dialogue.conversationId), 'dialogues', errors);
   checkDuplicateIds(perkResult.map((perk) => perk.id), 'perks', errors);
   checkDuplicateIds(recipeResult.map((recipe) => recipe.id), 'recipes', errors);
   checkDuplicateIds(regionResult.map((region) => region.id), 'regions', errors);
+
+  for (const enemy of enemyResult) {
+    if (!lootTableIds.has(enemy.lootTableId)) {
+      errors.push(`Enemy ${enemy.id} references unknown loot table ${enemy.lootTableId}`);
+    }
+  }
+
+  for (const table of lootTableResult) {
+    for (const entry of table.entries) {
+      if (!itemIds.has(entry.itemId)) {
+        errors.push(`Loot table ${table.id} references unknown item ${entry.itemId}`);
+      }
+    }
+  }
 
   for (const quest of questResult) {
     for (const rewardItem of quest.rewards.items) {
@@ -121,6 +151,7 @@ export function validateContent(bundle: ContentBundle): ContentValidationResult 
     parsed: {
       items: itemResult,
       enemies: enemyResult,
+      lootTables: lootTableResult,
       quests: questResult,
       dialogues: dialogueResult,
       perks: perkResult,

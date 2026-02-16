@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { defaultContent } from '../content/defaultContent';
-import type { EnemyData } from '../content/schemas';
+import type { EnemyData, LootTableData } from '../content/schemas';
 import { CraftingSystem, type CraftRecipe } from '../systems/crafting/CraftingSystem';
 import { EnemyController, type EnemyArchetype, type EnemySpawnConfig } from '../systems/combat/EnemyController';
 import { HollowHartBoss, type HollowHartPhase } from '../systems/combat/HollowHartBoss';
 import { DialogueRuntime, type DialogueStateAccess } from '../systems/dialogue/DialogueRuntime';
+import { LootSystem } from '../systems/economy/LootSystem';
 import { ShopSystem, type ShopListing } from '../systems/economy/ShopSystem';
 import { SaveRepository } from '../systems/save/SaveRepository';
 import { UpgradeSystem } from '../systems/upgrades/UpgradeSystem';
@@ -112,6 +113,7 @@ export class OverworldScene extends Phaser.Scene {
   private readonly upgrades = new UpgradeSystem();
   private crafting!: CraftingSystem;
   private shop!: ShopSystem;
+  private loot!: LootSystem;
 
   private player!: Phaser.Physics.Arcade.Sprite;
   private blockers!: Phaser.Physics.Arcade.StaticGroup;
@@ -161,6 +163,7 @@ export class OverworldScene extends Phaser.Scene {
 
     this.crafting = new CraftingSystem(defaultContent.recipes as CraftRecipe[]);
     this.shop = new ShopSystem(SHOP_LISTINGS, this.session.getShopRuntimeState());
+    this.loot = new LootSystem(defaultContent.lootTables as LootTableData[]);
 
     this.createMap();
     this.createPlayer();
@@ -403,6 +406,8 @@ export class OverworldScene extends Phaser.Scene {
       { enemyId: 'siltling', x: 42 * TILE_SIZE, y: 24 * TILE_SIZE, patrolRadius: 74 },
       { enemyId: 'grove_stalker', x: 58 * TILE_SIZE, y: 17 * TILE_SIZE, patrolRadius: 64 },
       { enemyId: 'grove_stalker', x: 64 * TILE_SIZE, y: 29 * TILE_SIZE, patrolRadius: 90 },
+      { enemyId: 'echo_wisp', x: 66 * TILE_SIZE, y: 12 * TILE_SIZE, patrolRadius: 74 },
+      { enemyId: 'echo_wisp', x: 78 * TILE_SIZE, y: 16 * TILE_SIZE, patrolRadius: 88 },
       { enemyId: 'quarry_brute', x: 72 * TILE_SIZE, y: 34 * TILE_SIZE, patrolRadius: 60 },
       { enemyId: 'quarry_brute', x: 81 * TILE_SIZE, y: 42 * TILE_SIZE, patrolRadius: 66 }
     ];
@@ -1098,7 +1103,18 @@ export class OverworldScene extends Phaser.Scene {
 
   private handleEnemyKilled(enemy: EnemyController): void {
     enemy.applyDeathRewards(this.session);
+    const drops = this.loot.roll(enemy.archetype.lootTableId);
+    for (const drop of drops) {
+      this.session.addItem(drop.itemId, drop.amount);
+    }
+
     this.session.log(`${enemy.archetype.name} defeated.`);
+    if (drops.length > 0) {
+      const summary = drops
+        .map((drop) => `${this.session.getItem(drop.itemId)?.name ?? drop.itemId} x${drop.amount}`)
+        .join(', ');
+      this.session.log(`Loot: ${summary}.`);
+    }
 
     this.session.recordObjectiveProgress('kill', enemy.archetype.id, 1);
 
@@ -1544,6 +1560,10 @@ export class OverworldScene extends Phaser.Scene {
     const map = new Map<string, EnemyArchetype>();
 
     for (const enemy of defaultContent.enemies as EnemyData[]) {
+      const isTank = enemy.aiProfileId === 'ai_tank';
+      const isSkirmisher = enemy.aiProfileId === 'ai_skirmisher';
+      const isRanged = enemy.aiProfileId === 'ai_ranged_wisp';
+
       map.set(enemy.id, {
         id: enemy.id,
         name: enemy.name,
@@ -1551,12 +1571,20 @@ export class OverworldScene extends Phaser.Scene {
         attack: enemy.attack,
         defense: enemy.defense,
         moveSpeed: enemy.speed,
-        aggroRange: enemy.id === 'quarry_brute' ? 160 : 210,
-        investigateRange: enemy.id === 'quarry_brute' ? 220 : 260,
-        attackRange: enemy.id === 'quarry_brute' ? 52 : enemy.id === 'grove_stalker' ? 44 : 40,
-        retreatThreshold: enemy.id === 'quarry_brute' ? 0.14 : 0.2,
-        xpReward: enemy.id === 'quarry_brute' ? 70 : enemy.id === 'grove_stalker' ? 42 : 26,
-        cindersReward: enemy.id === 'quarry_brute' ? 24 : enemy.id === 'grove_stalker' ? 14 : 8
+        aggroRange: isTank ? 160 : isRanged ? 240 : 210,
+        investigateRange: isTank ? 220 : isRanged ? 300 : 260,
+        attackRange: isTank ? 52 : isSkirmisher ? 44 : isRanged ? 150 : 40,
+        retreatThreshold: isTank ? 0.14 : isRanged ? 0.12 : 0.2,
+        xpReward: isTank ? 70 : isSkirmisher ? 42 : isRanged ? 48 : 26,
+        cindersReward: isTank ? 24 : isSkirmisher ? 14 : isRanged ? 16 : 8,
+        lootTableId: enemy.lootTableId,
+        aiProfileId: enemy.aiProfileId,
+        hitbox: {
+          width: enemy.hitbox.width,
+          height: enemy.hitbox.height,
+          offsetX: enemy.hitbox.offsetX,
+          offsetY: enemy.hitbox.offsetY
+        }
       });
     }
 
